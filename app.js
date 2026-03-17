@@ -1,7 +1,8 @@
 const CONFIG = {
-  apiBaseUrl: 'https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec',
+  apiBaseUrl: 'PASTE_YOUR_WEBAPP_URL_HERE',
   fallbackDemo: false,
-  autoRefreshMs: 0
+  autoRefreshMs: 0,
+  searchDebounceMs: 250
 };
 
 const monthNamesThai = {
@@ -25,7 +26,9 @@ let appState = {
   selectedYear: null,
   selectedMonth: null,
   search: '',
-  autoRefreshTimer: null
+  autoRefreshTimer: null,
+  searchTimer: null,
+  requestToken: 0
 };
 
 const el = {
@@ -77,10 +80,18 @@ function formatDateTime(value) {
 }
 
 function normalizeStatus(status) {
-  const s = String(status || '').trim();
-  if (s === 'ปกติ' || s.toLowerCase() === 'normal') return 'ปกติ';
-  if (s === 'ล่าช้า' || s.toLowerCase() === 'late') return 'ล่าช้า';
-  if (s === 'ยังไม่ส่ง' || s === 'ยังไม่ได้ส่ง' || s.toLowerCase() === 'missing') return 'ยังไม่ส่ง';
+  const s = String(status || '').trim().toLowerCase();
+
+  if (s === 'ปกติ' || s === 'normal') return 'ปกติ';
+  if (s === 'ล่าช้า' || s === 'late' || s === 'delay' || s === 'delayed') return 'ล่าช้า';
+  if (
+    s === 'ยังไม่ส่ง' ||
+    s === 'ยังไม่ได้ส่ง' ||
+    s === 'missing' ||
+    s === 'not submitted' ||
+    s === 'pending'
+  ) return 'ยังไม่ส่ง';
+
   return 'ยังไม่ส่ง';
 }
 
@@ -92,20 +103,15 @@ function getBadgeClass(status) {
 }
 
 function setStatus(message) {
-  if (el.statusText) {
-    el.statusText.textContent = message;
-  }
+  if (el.statusText) el.statusText.textContent = message;
 }
 
 function setLastUpdated(message) {
-  if (el.lastUpdated) {
-    el.lastUpdated.textContent = message;
-  }
+  if (el.lastUpdated) el.lastUpdated.textContent = message;
 }
 
 function createOptions(select, values, formatter = v => v) {
   if (!select) return;
-
   select.innerHTML = '';
 
   values.forEach(value => {
@@ -157,9 +163,7 @@ async function fetchDashboardData(year, month) {
     throw new Error('ยังไม่ได้ตั้งค่า Apps Script Web App URL');
   }
 
-  const url =
-    `${CONFIG.apiBaseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}&_ts=${Date.now()}`;
-
+  const url = `${CONFIG.apiBaseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}&_ts=${Date.now()}`;
   const json = await fetchJson(url);
   return json.data;
 }
@@ -177,13 +181,11 @@ function getMonthsForYear(periods, year) {
 
 function buildFallbackPeriods() {
   const now = new Date();
-  return [
-    {
-      year: now.getFullYear(),
-      month: now.getMonth() + 1,
-      monthThai: monthNamesThai[now.getMonth() + 1] || ''
-    }
-  ];
+  return [{
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    monthThai: monthNamesThai[now.getMonth() + 1] || ''
+  }];
 }
 
 function ensureSelectedPeriod() {
@@ -262,7 +264,6 @@ function renderTable(records) {
 
   records.forEach(item => {
     const tr = document.createElement('tr');
-
     const fileCell = item.fileUrl
       ? `<a class="file-link" href="${item.fileUrl}" target="_blank" rel="noopener">เปิดไฟล์</a>`
       : '-';
@@ -270,7 +271,7 @@ function renderTable(records) {
     tr.innerHTML = `
       <td>${escapeHtml(item.name || '-')}</td>
       <td><span class="badge ${getBadgeClass(item.status)}">${escapeHtml(normalizeStatus(item.status))}</span></td>
-      <td>${escapeHtml(formatDateTime(item.submittedAt || item.submittedAtDisplay || ''))}</td>
+      <td>${escapeHtml(item.submittedAtDisplay || formatDateTime(item.submittedAt || ''))}</td>
       <td>${escapeHtml(item.deadline || '-')}</td>
       <td>${fileCell}</td>
       <td>${escapeHtml(item.note || '-')}</td>
@@ -286,10 +287,43 @@ function normalizeRows(rows) {
     name: String(r.name || '').trim(),
     status: normalizeStatus(r.status),
     submittedAt: r.submittedAt || '',
+    submittedAtDisplay: r.submittedAtDisplay || '',
     deadline: r.deadline || '',
     fileUrl: r.fileUrl || '',
     note: r.note || ''
   }));
+}
+
+function getCountsFromApiOrRows(payload, filteredRows, isSearching) {
+  const apiCounts = payload?.counts || {};
+  const rows = Array.isArray(filteredRows) ? filteredRows : [];
+
+  if (!isSearching) {
+    const normal = Number.isFinite(Number(apiCounts.normal))
+      ? Number(apiCounts.normal)
+      : rows.filter(r => r.status === 'ปกติ').length;
+
+    const late = Number.isFinite(Number(apiCounts.late))
+      ? Number(apiCounts.late)
+      : rows.filter(r => r.status === 'ล่าช้า').length;
+
+    const missing = Number.isFinite(Number(apiCounts.missing))
+      ? Number(apiCounts.missing)
+      : rows.filter(r => r.status === 'ยังไม่ส่ง').length;
+
+    const total = Number.isFinite(Number(apiCounts.total))
+      ? Number(apiCounts.total)
+      : rows.length;
+
+    return { normal, late, missing, total };
+  }
+
+  return {
+    normal: rows.filter(r => r.status === 'ปกติ').length,
+    late: rows.filter(r => r.status === 'ล่าช้า').length,
+    missing: rows.filter(r => r.status === 'ยังไม่ส่ง').length,
+    total: rows.length
+  };
 }
 
 function renderFilteredView() {
@@ -297,37 +331,47 @@ function renderFilteredView() {
 
   const search = (appState.search || '').toLowerCase();
   const rows = normalizeRows(appState.dashboardData.rows);
+  const isSearching = Boolean(search);
 
   const filteredRows = rows.filter(r => {
     if (!search) return true;
     return String(r.name || '').toLowerCase().includes(search);
   });
 
-  const normalCount = filteredRows.filter(r => normalizeStatus(r.status) === 'ปกติ').length;
-  const lateCount = filteredRows.filter(r => normalizeStatus(r.status) === 'ล่าช้า').length;
-  const missingCount = filteredRows.filter(r => normalizeStatus(r.status) === 'ยังไม่ส่ง').length;
-  const total = filteredRows.length;
+  const counts = getCountsFromApiOrRows(appState.dashboardData, filteredRows, isSearching);
 
   if (el.deadlineValue) el.deadlineValue.textContent = appState.dashboardData.deadline || '-';
-  if (el.normalCount) el.normalCount.textContent = normalCount;
-  if (el.lateCount) el.lateCount.textContent = lateCount;
-  if (el.missingCount) el.missingCount.textContent = missingCount;
-  if (el.totalCount) el.totalCount.textContent = total;
+  if (el.normalCount) el.normalCount.textContent = counts.normal;
+  if (el.lateCount) el.lateCount.textContent = counts.late;
+  if (el.missingCount) el.missingCount.textContent = counts.missing;
+  if (el.totalCount) el.totalCount.textContent = counts.total;
   if (el.asOfDate) el.asOfDate.textContent = new Date().toLocaleString('th-TH');
   if (el.ruleText && appState.dashboardData.ruleText) el.ruleText.textContent = appState.dashboardData.ruleText;
 
   if (el.summaryLabel) {
     el.summaryLabel.textContent =
+      appState.dashboardData.reportLabel ||
       `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth} ${Number(appState.selectedYear) + 543}`;
   }
 
   renderTable(filteredRows);
-  renderChart(normalCount, lateCount, missingCount, total);
+  renderChart(counts.normal, counts.late, counts.missing, counts.total);
 }
 
 async function loadDashboardForSelectedPeriod() {
+  const token = ++appState.requestToken;
   const data = await fetchDashboardData(appState.selectedYear, appState.selectedMonth);
+
+  if (token !== appState.requestToken) return false;
   appState.dashboardData = data;
+  return true;
+}
+
+function debounce(fn, wait) {
+  return function(...args) {
+    clearTimeout(appState.searchTimer);
+    appState.searchTimer = setTimeout(() => fn.apply(this, args), wait);
+  };
 }
 
 function bindEvents() {
@@ -347,10 +391,12 @@ function bindEvents() {
   }
 
   if (el.searchInput) {
-    el.searchInput.addEventListener('input', () => {
+    const debouncedSearch = debounce(() => {
       appState.search = el.searchInput.value.trim();
       renderFilteredView();
-    });
+    }, CONFIG.searchDebounceMs);
+
+    el.searchInput.addEventListener('input', debouncedSearch);
   }
 
   if (el.refreshBtn) {
@@ -365,9 +411,7 @@ function bindEvents() {
 }
 
 function startAutoRefresh() {
-  if (appState.autoRefreshTimer) {
-    clearInterval(appState.autoRefreshTimer);
-  }
+  if (appState.autoRefreshTimer) clearInterval(appState.autoRefreshTimer);
 
   if (CONFIG.autoRefreshMs > 0) {
     appState.autoRefreshTimer = setInterval(async () => {
@@ -413,6 +457,7 @@ async function timedFetchJson(url, timeoutMs = 15000) {
 
     const text = await res.text();
     let json = null;
+
     try {
       json = JSON.parse(text);
     } catch (e) {
@@ -478,9 +523,7 @@ async function initApp(isRefresh = false, keepCurrentSelection = false) {
   try {
     setStatus('สถานะระบบ: กำลังโหลดข้อมูล');
 
-    if (isRefresh) {
-      setLastUpdated('กำลังรีเฟรช...');
-    }
+    if (isRefresh) setLastUpdated('กำลังรีเฟรช...');
 
     const periods = await fetchAvailablePeriods();
     appState.availablePeriods = periods.length ? periods : buildFallbackPeriods();
@@ -493,11 +536,11 @@ async function initApp(isRefresh = false, keepCurrentSelection = false) {
     ensureSelectedPeriod();
     renderPeriodSelectors();
 
-    await loadDashboardForSelectedPeriod();
+    const loaded = await loadDashboardForSelectedPeriod();
+    if (loaded === false) return;
 
     setLastUpdated(`อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}`);
     setStatus('สถานะระบบ: พร้อมใช้งาน');
-
     renderFilteredView();
   } catch (error) {
     console.error(error);
