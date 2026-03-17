@@ -252,3 +252,82 @@ pre {
     grid-template-columns: 72px 1fr 48px;
   }
 }
+#systemCheckCard {
+  margin-top: 16px;
+}
+
+.diag-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.diag-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.diag-actions button {
+  padding: 8px 12px;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.diag-actions button:hover {
+  background: #f5f7f8;
+}
+
+.diag-meta {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.diag-panel {
+  overflow-x: auto;
+}
+
+.diag-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.diag-table th,
+.diag-table td {
+  border: 1px solid #e0e0e0;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.diag-table th {
+  background: #f6f8fa;
+}
+
+.diag-ok {
+  color: #137333;
+  font-weight: 700;
+}
+
+.diag-warn {
+  color: #b06000;
+  font-weight: 700;
+}
+
+.diag-err {
+  color: #b3261e;
+  font-weight: 700;
+}
+
+.diag-muted {
+  color: #5f6368;
+}
