@@ -1,12 +1,11 @@
 (function () {
   'use strict';
 
-  const CONFIG = {
-    apiBaseUrl: 'https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec',
-    autoRefreshMs: 120000,
-    requestTimeoutMs: 25000,
-    version: 'compat-2026-03-17-01'
-  };
+ const CONFIG = {
+  apiBaseUrl: 'https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec',
+  fallbackDemo: false,
+  autoRefreshMs: 60000
+};
 
   const ACTION_CANDIDATES = {
     periods: ['years-months', 'yearsMonths', 'getYearsMonths', 'get-years-months'],
