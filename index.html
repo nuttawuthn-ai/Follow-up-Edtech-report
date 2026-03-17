@@ -18,7 +18,42 @@
         <button id="toggleDebugBtn" type="button" class="secondary-btn">เปิด/ปิด Debug</button>
       </div>
     </header>
+<section class="diag-card" id="systemCheckCard">
+  <div class="diag-head">
+    <h3>เครื่องมือตรวจระบบ 30 วินาที</h3>
+    <div class="diag-actions">
+      <button id="runSystemCheckBtn" type="button">ตรวจระบบ 30 วินาที</button>
+      <button id="toggleSystemCheckBtn" type="button">ซ่อน/แสดงผลตรวจ</button>
+    </div>
+  </div>
 
+  <div class="diag-meta">
+    <div><strong>หน้า:</strong> <span id="diagPageUrl">-</span></div>
+    <div><strong>API:</strong> <span id="diagApiUrl">-</span></div>
+    <div><strong>สถานะล่าสุด:</strong> <span id="diagOverallStatus">ยังไม่ได้ตรวจ</span></div>
+  </div>
+
+  <div id="systemCheckPanel" class="diag-panel">
+    <table class="diag-table">
+      <thead>
+        <tr>
+          <th>รายการตรวจ</th>
+          <th>ผลลัพธ์</th>
+          <th>รายละเอียด</th>
+          <th>เวลา</th>
+        </tr>
+      </thead>
+      <tbody id="systemCheckBody">
+        <tr>
+          <td>รอการตรวจ</td>
+          <td>-</td>
+          <td>กดปุ่ม "ตรวจระบบ 30 วินาที"</td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
     <section class="toolbar">
       <div class="field">
         <label for="yearSelect">ปี</label>
