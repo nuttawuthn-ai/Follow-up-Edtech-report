@@ -4,14 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Follow-up EdTech Report Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div class="container">
     <header class="page-header">
-      <h1>Dashboard ติดตามการส่งรายงาน</h1>
-      <p id="statusText">สถานะระบบ: กำลังโหลดข้อมูล</p>
-      <p id="lastUpdated">-</p>
+      <div>
+        <h1>Dashboard ติดตามการส่งรายงาน</h1>
+        <p id="statusText">สถานะระบบ: กำลังโหลดข้อมูล</p>
+        <p id="lastUpdated">-</p>
+      </div>
+      <div class="header-actions">
+        <button id="toggleDebugBtn" type="button" class="secondary-btn">เปิด/ปิด Debug</button>
+      </div>
     </header>
 
     <section class="toolbar">
@@ -68,23 +73,49 @@
     </section>
 
     <section class="table-section">
-      <h3>รายละเอียดรายบุคคล</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>ชื่อ</th>
-            <th>สถานะ</th>
-            <th>วันที่ส่งจริง</th>
-            <th>วันกำหนดส่ง</th>
-            <th>ไฟล์รายงาน</th>
-            <th>หมายเหตุ</th>
-          </tr>
-        </thead>
-        <tbody id="personTableBody"></tbody>
-      </table>
+      <div class="table-head">
+        <h3>รายละเอียดรายบุคคล</h3>
+        <span id="rowCountLabel" class="muted">0 รายการ</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ชื่อ</th>
+              <th>สถานะ</th>
+              <th>วันที่ส่งจริง</th>
+              <th>วันกำหนดส่ง</th>
+              <th>ไฟล์รายงาน</th>
+              <th>หมายเหตุ</th>
+            </tr>
+          </thead>
+          <tbody id="personTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="errorPanel" class="debug-panel error-panel hidden" aria-live="polite">
+      <h3>ข้อความผิดพลาด</h3>
+      <pre id="errorText">-</pre>
+    </section>
+
+    <section id="debugPanel" class="debug-panel hidden" aria-live="polite">
+      <div class="debug-head">
+        <h3>Debug Console</h3>
+        <div class="debug-actions">
+          <button id="copyDebugBtn" type="button" class="secondary-btn">คัดลอก log</button>
+          <button id="clearDebugBtn" type="button" class="secondary-btn">ล้าง log</button>
+        </div>
+      </div>
+      <div class="debug-meta">
+        <div><strong>หน้า:</strong> <span id="debugPageUrl">-</span></div>
+        <div><strong>API:</strong> <span id="debugApiUrl">-</span></div>
+        <div><strong>สถานะล่าสุด:</strong> <span id="debugLastStep">-</span></div>
+      </div>
+      <pre id="debugLog">กำลังเริ่มระบบ...</pre>
     </section>
   </div>
 
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
