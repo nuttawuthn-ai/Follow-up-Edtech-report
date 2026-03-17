@@ -1,5 +1,7 @@
 const CONFIG = {
-  apiBaseUrl: 'https://script.google.com/a/macros/ku.th/s/AKfycbzHoaAp5eV9qSrbDVi9468lXyqpkD0-_VaBo_fMrB2Jkk-ni3v4AcdH7ActZTmrCw1ipg/exec'
+  // ใส่ URL ของ Apps Script Web App ที่ Deploy แล้ว
+  apiBaseUrl: 'https://script.google.com/a/macros/ku.th/s/AKfycbzHoaAp5eV9qSrbDVi9468lXyqpkD0-_VaBo_fMrB2Jkk-ni3v4AcdH7ActZTmrCw1ipg/exec',
+  fallbackDemo: true,
 };
 
 const monthNamesThai = {
