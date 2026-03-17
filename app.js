@@ -2,7 +2,7 @@
   'use strict';
 
   const CONFIG = {
-    apiBaseUrl: 'https://script.google.com/macros/s/AKfycbzHoaAp5eV9qSrbDVi9468lXyqpkD0-_VaBo_fMrB2Jkk-ni3v4AcdH7ActZTmrCw1ipg/exec',
+    apiBaseUrl: 'https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec',
     autoRefreshMs: 120000,
     requestTimeoutMs: 25000,
     version: 'compat-2026-03-17-01'
