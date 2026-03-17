@@ -159,6 +159,229 @@
     if (el.summaryLabel) el.summaryLabel.textContent = `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth} ${appState.selectedYear}`;
     renderTable(filteredRows); renderChart(normalCount, lateCount, missingCount, total);
   }
+  function setDiagMeta() {
+  const pageEl = document.getElementById('diagPageUrl');
+  const apiEl = document.getElementById('diagApiUrl');
+  const statusEl = document.getElementById('diagOverallStatus');
+
+  if (pageEl) pageEl.textContent = window.location.href;
+  if (apiEl) apiEl.textContent = CONFIG.apiBaseUrl || '-';
+  if (statusEl) statusEl.textContent = 'พร้อมตรวจ';
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function diagStatusClass(status) {
+  if (status === 'PASS') return 'diag-ok';
+  if (status === 'WARN') return 'diag-warn';
+  if (status === 'FAIL') return 'diag-err';
+  return 'diag-muted';
+}
+
+function renderSystemCheckRows(rows) {
+  const tbody = document.getElementById('systemCheckBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = rows.map(row => `
+    <tr>
+      <td>${escapeHtml(row.name)}</td>
+      <td class="${diagStatusClass(row.status)}">${escapeHtml(row.status)}</td>
+      <td>${escapeHtml(row.detail)}</td>
+      <td>${escapeHtml(row.ms)}</td>
+    </tr>
+  `).join('');
+}
+
+function updateOverallDiagStatus(rows) {
+  const el = document.getElementById('diagOverallStatus');
+  if (!el) return;
+
+  const hasFail = rows.some(r => r.status === 'FAIL');
+  const hasWarn = rows.some(r => r.status === 'WARN');
+
+  if (hasFail) {
+    el.textContent = 'พบปัญหา';
+    el.className = 'diag-err';
+  } else if (hasWarn) {
+    el.textContent = 'ผ่านแบบมีคำเตือน';
+    el.className = 'diag-warn';
+  } else {
+    el.textContent = 'ผ่านทั้งหมด';
+    el.className = 'diag-ok';
+  }
+}
+
+async function timedFetchJson(url, timeoutMs = 15000) {
+  const started = performance.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal
+    });
+
+    const text = await res.text();
+    let json = null;
+
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      json = null;
+    }
+
+    return {
+      ok: res.ok,
+      status: res.status,
+      elapsedMs: Math.round(performance.now() - started),
+      text,
+      json
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function getSelectedYearMonthForDiag() {
+  const yearEl = document.getElementById('yearSelect');
+  const monthEl = document.getElementById('monthSelect');
+
+  return {
+    year: yearEl?.value || '',
+    month: monthEl?.value || ''
+  };
+}
+
+async function runSystemCheck() {
+  const rows = [];
+  const baseUrl = CONFIG.apiBaseUrl;
+
+  const pushRow = (name, status, detail, ms = '-') => {
+    rows.push({ name, status, detail, ms: typeof ms === 'number' ? `${ms} ms` : ms });
+    renderSystemCheckRows(rows);
+    updateOverallDiagStatus(rows);
+  };
+
+  renderSystemCheckRows([
+    { name: 'เริ่มต้น', status: 'INFO', detail: 'กำลังตรวจระบบ...', ms: '-' }
+  ]);
+
+  const statusEl = document.getElementById('diagOverallStatus');
+  if (statusEl) {
+    statusEl.textContent = 'กำลังตรวจ...';
+    statusEl.className = 'diag-muted';
+  }
+
+  try {
+    pushRow('หน้าเว็บ', 'PASS', 'JavaScript ทำงานปกติ');
+
+    if (!baseUrl) {
+      pushRow('API Base URL', 'FAIL', 'ไม่พบ CONFIG.apiBaseUrl');
+      return;
+    } else {
+      pushRow('API Base URL', 'PASS', baseUrl);
+    }
+
+    const pingUrl = `${baseUrl}?action=ping&_ts=${Date.now()}`;
+    try {
+      const r = await timedFetchJson(pingUrl);
+      if (!r.ok) {
+        pushRow('API Ping', 'FAIL', `HTTP ${r.status}`, r.elapsedMs);
+      } else if (!r.json) {
+        pushRow('API Ping', 'FAIL', 'ตอบกลับไม่ใช่ JSON', r.elapsedMs);
+      } else if (r.json.ok === true) {
+        pushRow('API Ping', 'PASS', r.json.message || 'API ใช้งานได้', r.elapsedMs);
+      } else {
+        pushRow('API Ping', 'WARN', JSON.stringify(r.json), r.elapsedMs);
+      }
+    } catch (err) {
+      pushRow('API Ping', 'FAIL', err.message || String(err));
+    }
+
+    const ymUrl = `${baseUrl}?action=years-months&_ts=${Date.now()}`;
+    let ymData = null;
+
+    try {
+      const r = await timedFetchJson(ymUrl);
+      if (!r.ok) {
+        pushRow('years-months', 'FAIL', `HTTP ${r.status}`, r.elapsedMs);
+      } else if (!r.json) {
+        pushRow('years-months', 'FAIL', 'ตอบกลับไม่ใช่ JSON', r.elapsedMs);
+      } else if (r.json.ok === true && Array.isArray(r.json.data)) {
+        ymData = r.json.data;
+        pushRow('years-months', 'PASS', `พบช่วงข้อมูล ${r.json.data.length} รายการ`, r.elapsedMs);
+      } else {
+        pushRow('years-months', 'WARN', JSON.stringify(r.json), r.elapsedMs);
+      }
+    } catch (err) {
+      pushRow('years-months', 'FAIL', err.message || String(err));
+    }
+
+    const selected = getSelectedYearMonthForDiag();
+    let year = selected.year;
+    let month = selected.month;
+
+    if ((!year || !month) && Array.isArray(ymData) && ymData.length > 0) {
+      const first = ymData[0];
+      year = first.year || '';
+      month = first.month || '';
+      pushRow('ปี/เดือนที่ใช้ตรวจ', 'WARN', `ไม่มีค่าที่เลือกอยู่ จึงใช้ค่าแรกจาก API: ${year}/${month}`);
+    } else if (year && month) {
+      pushRow('ปี/เดือนที่ใช้ตรวจ', 'PASS', `${year}/${month}`);
+    } else {
+      pushRow('ปี/เดือนที่ใช้ตรวจ', 'FAIL', 'ไม่พบปี/เดือนสำหรับทดสอบ');
+      return;
+    }
+
+    const dashUrl = `${baseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}&_ts=${Date.now()}`;
+
+    try {
+      const r = await timedFetchJson(dashUrl);
+      if (!r.ok) {
+        pushRow('dashboard-data', 'FAIL', `HTTP ${r.status}`, r.elapsedMs);
+      } else if (!r.json) {
+        pushRow('dashboard-data', 'FAIL', 'ตอบกลับไม่ใช่ JSON', r.elapsedMs);
+      } else if (r.json.ok === true && r.json.data) {
+        const keys = Object.keys(r.json.data || {});
+        pushRow('dashboard-data', 'PASS', `โหลดสำเร็จ โครงข้อมูล: ${keys.join(', ') || '(ไม่มี key)'}`, r.elapsedMs);
+      } else {
+        pushRow('dashboard-data', 'WARN', JSON.stringify(r.json), r.elapsedMs);
+      }
+    } catch (err) {
+      pushRow('dashboard-data', 'FAIL', err.message || String(err));
+    }
+
+  } catch (err) {
+    pushRow('System Check', 'FAIL', err.message || String(err));
+  }
+}
+
+function bindSystemCheckTools() {
+  setDiagMeta();
+
+  const runBtn = document.getElementById('runSystemCheckBtn');
+  const toggleBtn = document.getElementById('toggleSystemCheckBtn');
+  const panel = document.getElementById('systemCheckPanel');
+
+  if (runBtn) {
+    runBtn.addEventListener('click', runSystemCheck);
+  }
+
+  if (toggleBtn && panel) {
+    toggleBtn.addEventListener('click', () => {
+      panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    });
+  }
+}
   async function loadDashboardForSelectedPeriod() { appState.dashboardData = await fetchDashboardData(appState.selectedYear, appState.selectedMonth); }
   function startAutoRefresh() { if (appState.autoRefreshTimer) clearInterval(appState.autoRefreshTimer); if (CONFIG.autoRefreshMs > 0) appState.autoRefreshTimer = setInterval(() => initApp(true, true).catch(err => showError('Auto refresh error', err.message || String(err))), CONFIG.autoRefreshMs); }
   function bindEvents() {
