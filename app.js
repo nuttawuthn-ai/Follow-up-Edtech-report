@@ -1,6 +1,6 @@
 const CONFIG = {
   apiBaseUrl: 'https://script.google.com/macros/s/AKfycbzHoaAp5eV9qSrbDVi9468lXyqpkD0-_VaBo_fMrB2Jkk-ni3v4AcdH7ActZTmrCw1ipg/exec',
-  fallbackDemo: false,
+  fallbackDemo: false
 };
 
 const monthNamesThai = {
@@ -54,7 +54,9 @@ function getBadgeClass(status) {
 }
 
 function createOptions(select, values, formatter = v => v) {
+  if (!select) return;
   select.innerHTML = '';
+
   values.forEach(value => {
     const option = document.createElement('option');
     option.value = String(value);
@@ -65,11 +67,13 @@ function createOptions(select, values, formatter = v => v) {
 
 async function fetchJson(url) {
   const res = await fetch(url, { method: 'GET' });
+
   if (!res.ok) {
     throw new Error(`โหลดข้อมูลไม่สำเร็จ: ${res.status}`);
   }
 
   const json = await res.json();
+
   if (!json.ok) {
     throw new Error(json.message || 'API error');
   }
@@ -91,7 +95,9 @@ async function fetchDashboardData(year, month) {
     throw new Error('ยังไม่ได้ตั้งค่า Apps Script Web App URL');
   }
 
-  const url = `${CONFIG.apiBaseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}`;
+  const url =
+    `${CONFIG.apiBaseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}`;
+
   const json = await fetchJson(url);
   return json.data;
 }
@@ -109,11 +115,13 @@ function getMonthsForYear(periods, year) {
 
 function buildFallbackPeriods() {
   const now = new Date();
-  return [{
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    monthThai: monthNamesThai[now.getMonth() + 1] || ''
-  }];
+  return [
+    {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      monthThai: monthNamesThai[now.getMonth() + 1] || ''
+    }
+  ];
 }
 
 function ensureSelectedPeriod() {
@@ -143,11 +151,13 @@ function renderPeriodSelectors() {
   createOptions(el.yearSelect, years);
   createOptions(el.monthSelect, months, m => `${m} - ${monthNamesThai[m] || ''}`);
 
-  el.yearSelect.value = String(appState.selectedYear);
-  el.monthSelect.value = String(appState.selectedMonth);
+  if (el.yearSelect) el.yearSelect.value = String(appState.selectedYear);
+  if (el.monthSelect) el.monthSelect.value = String(appState.selectedMonth);
 }
 
 function renderChart(normalCount, lateCount, missingCount, total) {
+  if (!el.simpleChart) return;
+
   const bars = [
     { label: 'ปกติ', value: normalCount, cls: 'success' },
     { label: 'ล่าช้า', value: lateCount, cls: 'danger' },
@@ -162,7 +172,9 @@ function renderChart(normalCount, lateCount, missingCount, total) {
     row.className = 'bar-row';
     row.innerHTML = `
       <div>${item.label}</div>
-      <div class="bar-track"><div class="bar-fill ${item.cls}" style="width:${pct}%"></div></div>
+      <div class="bar-track">
+        <div class="bar-fill ${item.cls}" style="width:${pct}%"></div>
+      </div>
       <div>${item.value}</div>
     `;
     el.simpleChart.appendChild(row);
@@ -170,10 +182,13 @@ function renderChart(normalCount, lateCount, missingCount, total) {
 }
 
 function renderTable(records) {
+  if (!el.personTableBody) return;
+
   el.personTableBody.innerHTML = '';
 
   records.forEach(item => {
     const tr = document.createElement('tr');
+
     const fileCell = item.fileUrl
       ? `<a class="file-link" href="${item.fileUrl}" target="_blank" rel="noopener">เปิดไฟล์</a>`
       : '-';
@@ -194,12 +209,12 @@ function renderTable(records) {
 function renderFilteredView() {
   if (!appState.dashboardData) return;
 
-  const { search } = appState;
+  const search = (appState.search || '').toLowerCase();
   const rows = Array.isArray(appState.dashboardData.rows) ? appState.dashboardData.rows : [];
 
   const filteredRows = rows.filter(r => {
     if (!search) return true;
-    return String(r.name || '').toLowerCase().includes(search.toLowerCase());
+    return String(r.name || '').toLowerCase().includes(search);
   });
 
   const normalCount = filteredRows.filter(r => r.status === 'ปกติ').length;
@@ -207,12 +222,15 @@ function renderFilteredView() {
   const missingCount = filteredRows.filter(r => r.status === 'ยังไม่ส่ง').length;
   const total = filteredRows.length;
 
-  el.deadlineValue.textContent = appState.dashboardData.deadline || '-';
-  el.normalCount.textContent = normalCount;
-  el.lateCount.textContent = lateCount;
-  el.missingCount.textContent = missingCount;
-  el.totalCount.textContent = total;
-  el.summaryLabel.textContent = `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth} ${appState.selectedYear}`;
+  if (el.deadlineValue) el.deadlineValue.textContent = appState.dashboardData.deadline || '-';
+  if (el.normalCount) el.normalCount.textContent = normalCount;
+  if (el.lateCount) el.lateCount.textContent = lateCount;
+  if (el.missingCount) el.missingCount.textContent = missingCount;
+  if (el.totalCount) el.totalCount.textContent = total;
+  if (el.summaryLabel) {
+    el.summaryLabel.textContent =
+      `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth} ${appState.selectedYear}`;
+  }
 
   renderTable(filteredRows);
   renderChart(normalCount, lateCount, missingCount, total);
@@ -224,31 +242,39 @@ async function loadDashboardForSelectedPeriod() {
 }
 
 function bindEvents() {
-  el.yearSelect.addEventListener('change', async () => {
-    appState.selectedYear = Number(el.yearSelect.value);
-    renderPeriodSelectors();
-    await initApp(false, true);
-  });
+  if (el.yearSelect) {
+    el.yearSelect.addEventListener('change', async () => {
+      appState.selectedYear = Number(el.yearSelect.value);
+      renderPeriodSelectors();
+      await initApp(false, true);
+    });
+  }
 
-  el.monthSelect.addEventListener('change', async () => {
-    appState.selectedMonth = Number(el.monthSelect.value);
-    await initApp(false, true);
-  });
+  if (el.monthSelect) {
+    el.monthSelect.addEventListener('change', async () => {
+      appState.selectedMonth = Number(el.monthSelect.value);
+      await initApp(false, true);
+    });
+  }
 
-  el.searchInput.addEventListener('input', () => {
-    appState.search = el.searchInput.value.trim();
-    renderFilteredView();
-  });
+  if (el.searchInput) {
+    el.searchInput.addEventListener('input', () => {
+      appState.search = el.searchInput.value.trim();
+      renderFilteredView();
+    });
+  }
 
-  el.refreshBtn.addEventListener('click', async () => {
-    await initApp(true, true);
-  });
+  if (el.refreshBtn) {
+    el.refreshBtn.addEventListener('click', async () => {
+      await initApp(true, true);
+    });
+  }
 }
 
 async function initApp(isRefresh = false, keepCurrentSelection = false) {
   try {
-    el.statusText.textContent = 'สถานะระบบ: กำลังโหลดข้อมูล';
-    if (isRefresh) {
+    if (el.statusText) el.statusText.textContent = 'สถานะระบบ: กำลังโหลดข้อมูล';
+    if (isRefresh && el.lastUpdated) {
       el.lastUpdated.textContent = 'กำลังรีเฟรช...';
     }
 
@@ -265,14 +291,22 @@ async function initApp(isRefresh = false, keepCurrentSelection = false) {
 
     await loadDashboardForSelectedPeriod();
 
-    el.lastUpdated.textContent = `อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}`;
-    el.statusText.textContent = 'สถานะระบบ: พร้อมใช้งาน';
+    if (el.lastUpdated) {
+      el.lastUpdated.textContent = `อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}`;
+    }
+    if (el.statusText) {
+      el.statusText.textContent = 'สถานะระบบ: พร้อมใช้งาน';
+    }
 
     renderFilteredView();
   } catch (error) {
     console.error(error);
-    el.statusText.textContent = 'สถานะระบบ: โหลดข้อมูลไม่สำเร็จ';
-    el.lastUpdated.textContent = error.message || 'Unknown error';
+    if (el.statusText) {
+      el.statusText.textContent = 'สถานะระบบ: โหลดข้อมูลไม่สำเร็จ';
+    }
+    if (el.lastUpdated) {
+      el.lastUpdated.textContent = error.message || 'Unknown error';
+    }
   }
 }
 
