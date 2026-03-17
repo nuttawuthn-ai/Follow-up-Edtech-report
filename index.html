@@ -5,348 +5,115 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Follow-up EdTech Report Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f5f7fb;
-      color: #1f2937;
-    }
-
-    .container {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .page-header {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    }
-
-    .page-header h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
-
-    .subtle {
-      color: #6b7280;
-      font-size: 14px;
-    }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin: 16px 0;
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-      align-items: end;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 180px;
-    }
-
-    .field label {
-      font-size: 13px;
-      color: #4b5563;
-      font-weight: 600;
-    }
-
-    .field select,
-    .field button {
-      padding: 10px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      background: #fff;
-      font-size: 14px;
-    }
-
-    .field button {
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .status-bar {
-      margin: 12px 0 16px;
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 12px 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-      font-weight: 600;
-    }
-
-    .rule-box,
-    .summary-box,
-    .debug-box {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    }
-
-    .rule-box h3,
-    .summary-box h3,
-    .debug-box h3 {
-      margin-top: 0;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 18px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    }
-
-    .card .label {
-      font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 8px;
-    }
-
-    .card .value {
-      font-size: 30px;
-      font-weight: 700;
-    }
-
-    .card .sub {
-      margin-top: 8px;
-      font-size: 13px;
-      color: #6b7280;
-    }
-
-    .table-box {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th,
-    td {
-      border-bottom: 1px solid #e5e7eb;
-      text-align: left;
-      padding: 12px 10px;
-      vertical-align: top;
-    }
-
-    th {
-      background: #f9fafb;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .badge-normal {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .badge-late {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .badge-missing {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .badge-other {
-      background: #e5e7eb;
-      color: #374151;
-    }
-
-    .diag-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    .diag-table th,
-    .diag-table td {
-      border: 1px solid #e5e7eb;
-      padding: 10px;
-      vertical-align: top;
-    }
-
-    .diag-ok {
-      color: #15803d;
-      font-weight: 700;
-    }
-
-    .diag-warn {
-      color: #b45309;
-      font-weight: 700;
-    }
-
-    .diag-err {
-      color: #b91c1c;
-      font-weight: 700;
-    }
-
-    .diag-muted {
-      color: #6b7280;
-    }
-
-    .muted {
-      color: #6b7280;
-      font-size: 13px;
-    }
-
-    .empty-box {
-      padding: 24px;
-      text-align: center;
-      color: #6b7280;
-    }
-
-    @media (max-width: 768px) {
-      .page-header h1 {
-        font-size: 22px;
-      }
-    }
-  </style>
 </head>
 <body>
   <div class="container">
-    <section class="page-header">
-      <h1>Dashboard ติดตามการส่งผลการปฏิบัติงาน</h1>
-      <div class="subtle">
-        ใช้สำหรับติดตามสถานะการส่งรายงานรายเดือน พร้อมตรวจสอบว่าอยู่ในเกณฑ์ปกติ ล่าช้า หรือยังไม่ส่ง
-      </div>
-    </section>
+    <header class="page-header">
+      <h1>Dashboard ติดตามการส่งรายงาน</h1>
+      <p id="statusText">สถานะระบบ: กำลังโหลดข้อมูล</p>
+      <p id="lastUpdated">-</p>
+    </header>
 
     <section class="toolbar">
       <div class="field">
         <label for="yearSelect">ปี</label>
-        <select id="yearSelect">
-          <option value="">กำลังโหลด...</option>
-        </select>
+        <select id="yearSelect"></select>
       </div>
 
       <div class="field">
         <label for="monthSelect">เดือน</label>
-        <select id="monthSelect">
-          <option value="">กำลังโหลด...</option>
-        </select>
+        <select id="monthSelect"></select>
       </div>
 
       <div class="field">
-        <label>&nbsp;</label>
+        <label for="searchInput">ค้นหาชื่อ</label>
+        <input id="searchInput" type="text" placeholder="พิมพ์ชื่อบุคลากร" />
+      </div>
+
+      <div class="field button-wrap">
         <button id="refreshBtn" type="button">รีเฟรชข้อมูล</button>
       </div>
 
-      <div class="field">
-        <label>&nbsp;</label>
+      <div class="field button-wrap">
         <button id="runSystemCheckBtn" type="button">ตรวจระบบ 30 วินาที</button>
       </div>
     </section>
 
-    <div class="status-bar" id="systemStatus">สถานะระบบ: กำลังเชื่อมต่อข้อมูล...</div>
-
-    <section class="rule-box">
-      <h3>เกณฑ์การแสดงสถานะ</h3>
-      <p id="ruleText">รายงานของแต่ละเดือนต้องส่งไม่เกินวันศุกร์ที่ 2 ของเดือนถัดไป</p>
-      <p>วันที่อ้างอิงการประเมิน: <strong id="asOfDate">-</strong></p>
-      <p>วันครบกำหนดของงวดที่เลือก: <strong id="deadlineValue">-</strong></p>
+    <section class="summary-header">
+      <h2 id="summaryLabel">-</h2>
+      <p>กำหนดส่ง: <span id="deadlineValue">-</span></p>
+      <p>วันที่อ้างอิงการประเมิน: <span id="asOfDate">-</span></p>
+      <p id="ruleText">เกณฑ์: รายงานของแต่ละเดือนต้องส่งไม่เกินวันศุกร์ที่ 2 ของเดือนถัดไป</p>
     </section>
 
-    <section class="summary-box">
-      <h3>สรุปภาพรวม</h3>
-      <div class="muted" id="summaryTitle">-</div>
-    </section>
-
-    <section class="summary-grid">
+    <section class="stats-grid">
       <div class="card">
-        <div class="label">ทั้งหมด</div>
-        <div class="value" id="totalCount">0</div>
-        <div class="sub">จำนวนบุคลากรทั้งหมดในงวดที่เลือก</div>
+        <h3>ปกติ</h3>
+        <div id="normalCount">0</div>
       </div>
 
       <div class="card">
-        <div class="label">ปกติ</div>
-        <div class="value" id="normalCount">0</div>
-        <div class="sub">ส่งภายในวันศุกร์ที่ 2 ของเดือนถัดไป</div>
+        <h3>ล่าช้า</h3>
+        <div id="lateCount">0</div>
       </div>
 
       <div class="card">
-        <div class="label">ล่าช้า</div>
-        <div class="value" id="lateCount">0</div>
-        <div class="sub">ส่งแล้ว แต่เลยกำหนด</div>
+        <h3>ยังไม่ส่ง</h3>
+        <div id="missingCount">0</div>
       </div>
 
       <div class="card">
-        <div class="label">ยังไม่ส่ง</div>
-        <div class="value" id="missingCount">0</div>
-        <div class="sub">ยังไม่พบข้อมูลการส่ง</div>
+        <h3>รวมทั้งหมด</h3>
+        <div id="totalCount">0</div>
       </div>
     </section>
 
-    <section class="table-box">
-      <h3>รายชื่อรายบุคคล</h3>
-      <div id="tableContainer">
-        <div class="empty-box">กำลังโหลดข้อมูล...</div>
-      </div>
+    <section class="chart-section">
+      <h3>กราฟสรุปสถานะ</h3>
+      <div id="simpleChart"></div>
     </section>
 
-    <section class="debug-box">
+    <section class="table-section">
+      <h3>รายละเอียดรายบุคคล</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ชื่อ</th>
+            <th>สถานะ</th>
+            <th>วันที่ส่งจริง</th>
+            <th>วันกำหนดส่ง</th>
+            <th>ไฟล์รายงาน</th>
+            <th>หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody id="personTableBody"></tbody>
+      </table>
+    </section>
+
+    <section class="debug-section">
       <h3>เครื่องมือตรวจระบบ 30 วินาที</h3>
       <p>หน้า: <span id="diagPageUrl">-</span></p>
       <p>API: <span id="diagApiUrl">-</span></p>
       <p>สถานะล่าสุด: <span id="diagOverallStatus">ยังไม่ได้ตรวจ</span></p>
 
-      <div id="systemCheckPanel">
-        <table class="diag-table">
-          <thead>
-            <tr>
-              <th>รายการตรวจ</th>
-              <th>ผลลัพธ์</th>
-              <th>รายละเอียด</th>
-              <th>เวลา</th>
-            </tr>
-          </thead>
-          <tbody id="systemCheckBody">
-            <tr>
-              <td>รอการตรวจ</td>
-              <td>-</td>
-              <td>กดปุ่ม “ตรวจระบบ 30 วินาที”</td>
-              <td>-</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table class="diag-table">
+        <thead>
+          <tr>
+            <th>รายการตรวจ</th>
+            <th>ผลลัพธ์</th>
+            <th>รายละเอียด</th>
+            <th>เวลา</th>
+          </tr>
+        </thead>
+        <tbody id="systemCheckBody">
+          <tr>
+            <td>รอการตรวจ</td>
+            <td>-</td>
+            <td>กดปุ่ม “ตรวจระบบ 30 วินาที”</td>
+            <td>-</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   </div>
 
