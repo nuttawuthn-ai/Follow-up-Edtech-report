@@ -3,109 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ระบบติดตามการส่งรายงาน</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Follow-up EdTech Report Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="container">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">Smart Dashboard</p>
-        <h1>ระบบติดตามการส่งรายงานประจำเดือน</h1>
-        <p class="subtitle">แสดงผลจาก Google Sheets / Apps Script แบบอัตโนมัติ และพร้อมนำขึ้น GitHub Pages</p>
-      </div>
-      <div class="hero-actions">
-        <button id="refreshBtn" class="btn primary">รีเฟรชข้อมูล</button>
-        <span id="lastUpdated" class="last-updated">กำลังโหลดข้อมูล...</span>
-      </div>
+    <header class="page-header">
+      <h1>Dashboard ติดตามการส่งรายงาน</h1>
+      <p id="statusText">สถานะระบบ: กำลังโหลดข้อมูล</p>
+      <p id="lastUpdated">-</p>
     </header>
 
-    <section class="filters card">
-      <div class="filter-item">
+    <section class="toolbar">
+      <div class="field">
         <label for="yearSelect">ปี</label>
         <select id="yearSelect"></select>
       </div>
-      <div class="filter-item">
+
+      <div class="field">
         <label for="monthSelect">เดือน</label>
         <select id="monthSelect"></select>
       </div>
-      <div class="filter-item grow">
-        <label for="searchInput">ค้นหารายชื่อ</label>
+
+      <div class="field">
+        <label for="searchInput">ค้นหาชื่อ</label>
         <input id="searchInput" type="text" placeholder="พิมพ์ชื่อบุคลากร" />
+      </div>
+
+      <div class="field button-wrap">
+        <button id="refreshBtn" type="button">รีเฟรชข้อมูล</button>
       </div>
     </section>
 
+    <section class="summary-header">
+      <h2 id="summaryLabel">-</h2>
+      <p>กำหนดส่ง: <span id="deadlineValue">-</span></p>
+    </section>
+
     <section class="stats-grid">
-      <article class="stat-card card">
-        <span class="stat-label">กำหนดส่ง</span>
-        <strong id="deadlineValue" class="stat-value">-</strong>
-      </article>
-      <article class="stat-card card success">
-        <span class="stat-label">ส่งปกติ</span>
-        <strong id="normalCount" class="stat-value">0</strong>
-      </article>
-      <article class="stat-card card danger">
-        <span class="stat-label">ส่งล่าช้า</span>
-        <strong id="lateCount" class="stat-value">0</strong>
-      </article>
-      <article class="stat-card card warning">
-        <span class="stat-label">ยังไม่ส่ง</span>
-        <strong id="missingCount" class="stat-value">0</strong>
-      </article>
-      <article class="stat-card card neutral">
-        <span class="stat-label">รวมบุคลากร</span>
-        <strong id="totalCount" class="stat-value">0</strong>
-      </article>
+      <div class="card">
+        <h3>ปกติ</h3>
+        <div id="normalCount">0</div>
+      </div>
+
+      <div class="card">
+        <h3>ล่าช้า</h3>
+        <div id="lateCount">0</div>
+      </div>
+
+      <div class="card">
+        <h3>ยังไม่ส่ง</h3>
+        <div id="missingCount">0</div>
+      </div>
+
+      <div class="card">
+        <h3>รวมทั้งหมด</h3>
+        <div id="totalCount">0</div>
+      </div>
     </section>
 
-    <section class="content-grid">
-      <article class="card">
-        <div class="section-head">
-          <h2>สถานะรายบุคคล</h2>
-          <span id="summaryLabel" class="muted"></span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ชื่อ</th>
-                <th>สถานะ</th>
-                <th>วันที่ส่งจริง</th>
-                <th>วันกำหนดส่ง</th>
-                <th>ไฟล์รายงาน</th>
-                <th>หมายเหตุ</th>
-              </tr>
-            </thead>
-            <tbody id="personTableBody"></tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="card side-panel">
-        <div class="section-head">
-          <h2>สรุปภาพรวม</h2>
-        </div>
-        <div class="legend">
-          <div><span class="dot success"></span> ปกติ</div>
-          <div><span class="dot danger"></span> ล่าช้า</div>
-          <div><span class="dot warning"></span> ยังไม่ส่ง</div>
-        </div>
-        <div id="simpleChart" class="chart-bars"></div>
-        <div class="notes">
-          <p><strong>แหล่งข้อมูล:</strong> Apps Script Web App / Google Sheets</p>
-          <p><strong>รูปแบบ:</strong> GitHub Pages Static Site</p>
-          <p><strong>เหมาะสำหรับ:</strong> เปิดดูผ่านเว็บ, แชร์ลิงก์, ใช้บนมือถือ</p>
-        </div>
-      </article>
+    <section class="chart-section">
+      <h3>กราฟสรุปสถานะ</h3>
+      <div id="simpleChart"></div>
     </section>
 
-    <footer class="footer">
-      <span>Built for GitHub Pages</span>
-      <span id="statusText">สถานะระบบ: พร้อมใช้งาน</span>
-    </footer>
+    <section class="table-section">
+      <h3>รายละเอียดรายบุคคล</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ชื่อ</th>
+            <th>สถานะ</th>
+            <th>วันที่ส่งจริง</th>
+            <th>วันกำหนดส่ง</th>
+            <th>ไฟล์รายงาน</th>
+            <th>หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody id="personTableBody"></tbody>
+      </table>
+    </section>
   </div>
 
   <script src="app.js"></script>
