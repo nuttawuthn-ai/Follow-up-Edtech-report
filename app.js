@@ -126,8 +126,8 @@ function createOptions(select, values, formatter = v => v) {
 
 function showSkeletonLoading() {
   // stat cards: แสดง skeleton แทนตัวเลข
-  [el.normalCount, el.lateCount, el.missingCount, el.totalCount].forEach(el => {
-    if (el) el.innerHTML = '<span class="skeleton"></span>';
+  [el.normalCount, el.lateCount, el.missingCount, el.totalCount].forEach(countEl => {
+    if (countEl) countEl.innerHTML = '<span class="skeleton"></span>';
   });
   // reset % bars
   [el.normalPctFill, el.latePctFill, el.missingPctFill].forEach(fill => {
@@ -310,17 +310,19 @@ function renderStatPctBars(counts) {
 // ★ อัปเดต completion bar
 function renderCompletionBar(counts) {
   const { normal, late, missing, total } = counts;
+
+  // คำนวณ % โดยให้ segment สุดท้ายดูดส่วนที่เหลือ ป้องกัน rounding เกิน 100%
   const pNormal  = pct(normal,  total);
   const pLate    = pct(late,    total);
-  const pMissing = pct(missing, total);
+  const pMissing = total ? 100 - pNormal - pLate : 0;
 
   if (el.compSegNormal)  el.compSegNormal.style.width  = `${pNormal}%`;
   if (el.compSegLate)    el.compSegLate.style.width    = `${pLate}%`;
-  if (el.compSegMissing) el.compSegMissing.style.width = `${pMissing}%`;
+  if (el.compSegMissing) el.compSegMissing.style.width = `${Math.max(0, pMissing)}%`;
   if (el.completionPct)  el.completionPct.textContent  = `${pNormal}%`;
   if (el.legendNormal)   el.legendNormal.textContent   = `${pNormal}%`;
   if (el.legendLate)     el.legendLate.textContent     = `${pLate}%`;
-  if (el.legendMissing)  el.legendMissing.textContent  = `${pMissing}%`;
+  if (el.legendMissing)  el.legendMissing.textContent  = `${Math.max(0, pMissing)}%`;
 }
 
 function renderFilteredView() {
@@ -375,7 +377,6 @@ async function switchPeriod() {
     const isCached = Boolean(appState.dataCache[key]);
 
     if (!isCached) {
-      // ★ แสดง skeleton ระหว่างรอข้อมูลใหม่
       setStatus('สถานะระบบ: กำลังโหลดข้อมูล');
       showSkeletonLoading();
     }
@@ -390,6 +391,13 @@ async function switchPeriod() {
     console.error(error);
     setStatus('สถานะระบบ: โหลดข้อมูลไม่สำเร็จ');
     setLastUpdated(error.message || 'Unknown error');
+    // ★ ล้าง skeleton ออก แสดง error state
+    if (el.personTableBody) {
+      el.personTableBody.innerHTML = `<tr><td colspan="6" class="empty-note" style="color:#b91c1c;">โหลดข้อมูลไม่สำเร็จ — กรุณากดรีเฟรชข้อมูลอีกครั้ง</td></tr>`;
+    }
+    [el.normalCount, el.lateCount, el.missingCount, el.totalCount].forEach(countEl => {
+      if (countEl) countEl.textContent = '-';
+    });
   }
 }
 
@@ -398,12 +406,19 @@ async function switchPeriod() {
 function exportCsv() {
   if (!appState.dashboardData) return;
 
-  const rows     = normalizeRows(appState.dashboardData.rows);
-  const label    = appState.dashboardData.reportLabel ||
-                   `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth}_${Number(appState.selectedYear) + 543}`;
-  const headers  = ['ชื่อ', 'สถานะ', 'วันที่ส่งจริง', 'วันกำหนดส่ง', 'ไฟล์รายงาน', 'หมายเหตุ'];
+  // ★ ใช้ข้อมูลที่ filter อยู่ปัจจุบัน ไม่ใช่ทั้งหมด
+  const allRows = normalizeRows(appState.dashboardData.rows);
+  const search  = (appState.search || '').toLowerCase();
+  const rows    = search
+    ? allRows.filter(r => String(r.name || '').toLowerCase().includes(search))
+    : allRows;
 
-  const csvRows  = [
+  const label   = appState.dashboardData.reportLabel ||
+                  `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth}_${Number(appState.selectedYear) + 543}`;
+  const suffix  = search ? `_ค้นหา-${appState.search}` : '';
+  const headers = ['ชื่อ', 'สถานะ', 'วันที่ส่งจริง', 'วันกำหนดส่ง', 'ไฟล์รายงาน', 'หมายเหตุ'];
+
+  const csvRows = [
     headers.join(','),
     ...rows.map(r => [
       `"${(r.name || '').replace(/"/g, '""')}"`,
@@ -420,7 +435,7 @@ function exportCsv() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `รายงาน_${label}.csv`;
+  a.download = `รายงาน_${label}${suffix}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -513,6 +528,13 @@ async function initApp(isRefresh = false, keepCurrentSelection = false) {
     console.error(error);
     setStatus('สถานะระบบ: โหลดข้อมูลไม่สำเร็จ');
     setLastUpdated(error.message || 'Unknown error');
+    // ★ Bug 4: ล้าง skeleton ออก แสดง error state ในตาราง
+    if (el.personTableBody) {
+      el.personTableBody.innerHTML = `<tr><td colspan="6" class="empty-note" style="color:#b91c1c;">โหลดข้อมูลไม่สำเร็จ — กรุณากดรีเฟรชข้อมูลอีกครั้ง</td></tr>`;
+    }
+    [el.normalCount, el.lateCount, el.missingCount, el.totalCount].forEach(countEl => {
+      if (countEl) countEl.textContent = '-';
+    });
   }
 }
 
