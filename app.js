@@ -149,7 +149,7 @@ async function fetchJson(url) {
 }
 
 async function fetchAvailablePeriods() {
-  if (!CONFIG.apiBaseUrl || CONFIG.apiBaseUrl.includes('https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec')) {
+  if (!CONFIG.apiBaseUrl || CONFIG.apiBaseUrl.includes('PASTE_YOUR')) {
     throw new Error('ยังไม่ได้ตั้งค่า Apps Script Web App URL');
   }
 
@@ -159,7 +159,7 @@ async function fetchAvailablePeriods() {
 }
 
 async function fetchDashboardData(year, month) {
-  if (!CONFIG.apiBaseUrl || CONFIG.apiBaseUrl.includes('https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec')) {
+  if (!CONFIG.apiBaseUrl || CONFIG.apiBaseUrl.includes('PASTE_YOUR')) {
     throw new Error('ยังไม่ได้ตั้งค่า Apps Script Web App URL');
   }
 
