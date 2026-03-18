@@ -21,9 +21,7 @@
       --shadow: 0 2px 10px rgba(0,0,0,0.06);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -42,8 +40,7 @@
     .toolbar,
     .summary-header,
     .chart-section,
-    .table-section,
-    .debug-section {
+    .table-section {
       background: var(--card);
       border-radius: 16px;
       box-shadow: var(--shadow);
@@ -51,10 +48,7 @@
       margin-bottom: 16px;
     }
 
-    .page-header h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
+    .page-header h1 { margin: 0 0 8px; font-size: 28px; }
 
     .subtext,
     #lastUpdated,
@@ -66,16 +60,12 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 12px;
       align-items: end;
     }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    .field { display: flex; flex-direction: column; gap: 6px; }
 
     .field label {
       font-size: 13px;
@@ -83,9 +73,7 @@
       font-weight: 600;
     }
 
-    select,
-    input,
-    button {
+    select, input, button {
       width: 100%;
       padding: 10px 12px;
       border: 1px solid var(--border);
@@ -94,25 +82,28 @@
       background: #fff;
     }
 
-    button {
-      cursor: pointer;
-      font-weight: 600;
-    }
+    button { cursor: pointer; font-weight: 600; }
+    button:hover { background: #f9fafb; }
 
-    button:hover {
-      background: #f9fafb;
-    }
+    .btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .btn-primary:hover { background: #1d4ed8; }
 
-    .button-wrap {
-      justify-content: flex-end;
+    .btn-export {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
     }
+    .btn-export:hover { background: #f9fafb; }
+
+    .button-wrap { justify-content: flex-end; }
 
     .summary-header h2,
     .chart-section h3,
-    .table-section h3,
-    .debug-section h3 {
-      margin-top: 0;
-    }
+    .table-section h3 { margin-top: 0; }
 
     .summary-meta {
       display: flex;
@@ -122,6 +113,7 @@
       font-size: 14px;
     }
 
+    /* ── Stat cards ── */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -137,19 +129,114 @@
     }
 
     .card h3 {
-      margin: 0 0 10px;
-      font-size: 16px;
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat-number {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .stat-pct-bar {
+      height: 5px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .stat-pct-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+    .stat-pct-label {
+      margin-top: 5px;
+      font-size: 12px;
       color: var(--muted);
     }
 
-    .card div {
-      font-size: 32px;
-      font-weight: 700;
+    /* Card สี */
+    .card-normal  { border-top: 4px solid #16a34a; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%); }
+    .card-normal  h3, .card-normal  .stat-number { color: #15803d; }
+    .card-normal  .stat-pct-fill { background: #16a34a; }
+
+    .card-late    { border-top: 4px solid #dc2626; background: linear-gradient(135deg, #fff1f1 0%, #ffffff 60%); }
+    .card-late    h3, .card-late    .stat-number { color: #b91c1c; }
+    .card-late    .stat-pct-fill { background: #dc2626; }
+
+    .card-missing { border-top: 4px solid #d97706; background: linear-gradient(135deg, #fffbeb 0%, #ffffff 60%); }
+    .card-missing h3, .card-missing .stat-number { color: #b45309; }
+    .card-missing .stat-pct-fill { background: #d97706; }
+
+    .card-total   { border-top: 4px solid #2563eb; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 60%); }
+    .card-total   h3, .card-total   .stat-number { color: #1d4ed8; }
+    .card-total   .stat-pct-fill { background: #2563eb; }
+
+    /* ── Completion bar ── */
+    .completion-bar-wrap {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 14px 20px;
+      margin-bottom: 16px;
+    }
+    .completion-bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .completion-bar-header strong { color: var(--text); font-size: 15px; }
+    .completion-bar-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+      display: flex;
+    }
+    .completion-seg { height: 100%; transition: width 0.5s ease; }
+    .completion-seg.normal  { background: #16a34a; }
+    .completion-seg.late    { background: #dc2626; }
+    .completion-seg.missing { background: #d97706; }
+    .completion-bar-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .legend-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
     }
 
-    .chart-section {
-      overflow: hidden;
+    /* ── Skeleton loading ── */
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 0.85; }
     }
+    .skeleton {
+      background: #e5e7eb;
+      border-radius: 6px;
+      animation: shimmer 1.4s ease-in-out infinite;
+      display: block;
+      width: 60px;
+      height: 36px;
+    }
+
+    /* ── Chart ── */
+    .chart-section { overflow: hidden; }
 
     #simpleChart {
       display: flex;
@@ -174,46 +261,42 @@
       overflow: hidden;
     }
 
-    .bar-fill {
-      height: 100%;
-      border-radius: 999px;
-    }
+    .bar-fill { height: 100%; border-radius: 999px; }
+    .bar-fill.success { background: #16a34a; }
+    .bar-fill.danger  { background: #dc2626; }
+    .bar-fill.warning { background: #d97706; }
 
-    .bar-fill.success {
-      background: #34a853;
-    }
+    /* ── Table ── */
+    .table-section { overflow-x: auto; }
 
-    .bar-fill.danger {
-      background: #ea4335;
+    .table-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
+    .table-header-row h3 { margin: 0; }
 
-    .bar-fill.warning {
-      background: #fbbc05;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
-    .table-section {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th,
-    td {
+    th, td {
       border-bottom: 1px solid var(--border);
       padding: 12px 10px;
       text-align: left;
       vertical-align: top;
     }
 
-    th {
-      background: #f9fafb;
-      font-weight: 700;
-      white-space: nowrap;
-    }
+    th { background: #f9fafb; font-weight: 700; white-space: nowrap; }
+
+    /* Row highlight */
+    tr.row-normal  { background: #f0fdf4; }
+    tr.row-late    { background: #fff1f1; }
+    tr.row-missing { background: #fffbeb; }
+    tr.row-normal:hover  { background: #dcfce7; }
+    tr.row-late:hover    { background: #fee2e2; }
+    tr.row-missing:hover { background: #fef3c7; }
 
     .badge {
       display: inline-block;
@@ -223,121 +306,25 @@
       font-weight: 700;
       white-space: nowrap;
     }
+    .badge.normal  { background: #dcfce7; color: #15803d; }
+    .badge.late    { background: #fee2e2; color: #b91c1c; }
+    .badge.missing { background: #fef3c7; color: #b45309; }
 
-    .badge.normal {
-      background: var(--ok-bg);
-      color: var(--ok-text);
-    }
+    .file-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+    .file-link:hover { text-decoration: underline; }
 
-    .badge.late {
-      background: var(--late-bg);
-      color: var(--late-text);
-    }
-
-    .badge.missing {
-      background: var(--missing-bg);
-      color: var(--missing-text);
-    }
-
-    .file-link {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .file-link:hover {
-      text-decoration: underline;
-    }
-
-    .debug-section p {
-      margin: 6px 0;
-      color: var(--muted);
-      word-break: break-all;
-    }
-
-    .diag-table {
-      margin-top: 12px;
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    .diag-table th,
-    .diag-table td {
-      border: 1px solid var(--border);
-      padding: 10px;
-      vertical-align: top;
-    }
-
-    .diag-ok {
-      color: #15803d;
-      font-weight: 700;
-    }
-
-    .diag-warn {
-      color: #b45309;
-      font-weight: 700;
-    }
-
-    .diag-err {
-      color: #b91c1c;
-      font-weight: 700;
-    }
-
-    .empty-note {
-      color: var(--muted);
-      text-align: center;
-      padding: 20px;
-    }
-
-    /* ===== Card สี ===== */
-    .card-normal {
-      border-top: 4px solid #16a34a;
-      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%);
-    }
-    .card-normal h3 { color: #15803d; }
-    .card-normal div { color: #15803d; }
-
-    .card-late {
-      border-top: 4px solid #dc2626;
-      background: linear-gradient(135deg, #fff1f1 0%, #ffffff 60%);
-    }
-    .card-late h3 { color: #b91c1c; }
-    .card-late div { color: #b91c1c; }
-
-    .card-missing {
-      border-top: 4px solid #d97706;
-      background: linear-gradient(135deg, #fffbeb 0%, #ffffff 60%);
-    }
-    .card-missing h3 { color: #b45309; }
-    .card-missing div { color: #b45309; }
-
-    .card-total {
-      border-top: 4px solid #2563eb;
-      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 60%);
-    }
-    .card-total h3 { color: #1d4ed8; }
-    .card-total div { color: #1d4ed8; }
+    .empty-note { color: var(--muted); text-align: center; padding: 20px; }
 
     @media (max-width: 768px) {
-      .page-header h1 {
-        font-size: 22px;
-      }
-
-      .bar-row {
-        grid-template-columns: 80px 1fr 40px;
-        gap: 8px;
-      }
-
-      th,
-      td {
-        padding: 10px 8px;
-      }
+      .page-header h1 { font-size: 22px; }
+      .bar-row { grid-template-columns: 80px 1fr 40px; gap: 8px; }
+      th, td { padding: 10px 8px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
+
     <section class="page-header">
       <h1>Dashboard ติดตามการส่งรายงาน</h1>
       <p class="subtext">ติดตามสถานะการส่งรายงานรายเดือน แสดงผลเป็น ปกติ / ล่าช้า / ยังไม่ส่ง</p>
@@ -363,12 +350,17 @@
 
       <div class="field button-wrap">
         <label>&nbsp;</label>
-        <button id="refreshBtn" type="button">รีเฟรชข้อมูล</button>
+        <button id="refreshBtn" type="button" class="btn-primary">รีเฟรชข้อมูล</button>
       </div>
 
       <div class="field button-wrap">
         <label>&nbsp;</label>
-        <button id="runSystemCheckBtn" type="button">ตรวจระบบ 30 วินาที</button>
+        <button id="exportCsvBtn" type="button" class="btn-export">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v8M4 6l4 4 4-4M2 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Export CSV
+        </button>
       </div>
     </section>
 
@@ -381,27 +373,54 @@
       <p id="ruleText">เกณฑ์: รายงานของแต่ละเดือนต้องส่งไม่เกินวันศุกร์ที่ 2 ของเดือนถัดไป</p>
     </section>
 
+    <!-- Stat cards -->
     <section class="stats-grid">
       <div class="card card-normal">
         <h3>ปกติ</h3>
-        <div id="normalCount">0</div>
+        <div id="normalCount" class="stat-number">0</div>
+        <div class="stat-pct-bar"><div id="normalPctFill" class="stat-pct-fill" style="width:0%"></div></div>
+        <div id="normalPctLabel" class="stat-pct-label">0% ของทั้งหมด</div>
       </div>
 
       <div class="card card-late">
         <h3>ล่าช้า</h3>
-        <div id="lateCount">0</div>
+        <div id="lateCount" class="stat-number">0</div>
+        <div class="stat-pct-bar"><div id="latePctFill" class="stat-pct-fill" style="width:0%"></div></div>
+        <div id="latePctLabel" class="stat-pct-label">0% ของทั้งหมด</div>
       </div>
 
       <div class="card card-missing">
         <h3>ยังไม่ส่ง</h3>
-        <div id="missingCount">0</div>
+        <div id="missingCount" class="stat-number">0</div>
+        <div class="stat-pct-bar"><div id="missingPctFill" class="stat-pct-fill" style="width:0%"></div></div>
+        <div id="missingPctLabel" class="stat-pct-label">0% ของทั้งหมด</div>
       </div>
 
       <div class="card card-total">
         <h3>รวมทั้งหมด</h3>
-        <div id="totalCount">0</div>
+        <div id="totalCount" class="stat-number">0</div>
+        <div class="stat-pct-bar"><div class="stat-pct-fill" style="width:100%"></div></div>
+        <div class="stat-pct-label">100%</div>
       </div>
     </section>
+
+    <!-- Completion bar -->
+    <div class="completion-bar-wrap">
+      <div class="completion-bar-header">
+        <span>อัตราการส่งรายงาน</span>
+        <strong id="completionPct">0%</strong>
+      </div>
+      <div class="completion-bar-track">
+        <div id="compSegNormal"  class="completion-seg normal"  style="width:0%"></div>
+        <div id="compSegLate"    class="completion-seg late"    style="width:0%"></div>
+        <div id="compSegMissing" class="completion-seg missing" style="width:0%"></div>
+      </div>
+      <div class="completion-bar-legend">
+        <span><span class="legend-dot" style="background:#16a34a"></span>ปกติ <span id="legendNormal">0%</span></span>
+        <span><span class="legend-dot" style="background:#dc2626"></span>ล่าช้า <span id="legendLate">0%</span></span>
+        <span><span class="legend-dot" style="background:#d97706"></span>ยังไม่ส่ง <span id="legendMissing">0%</span></span>
+      </div>
+    </div>
 
     <section class="chart-section">
       <h3>กราฟสรุปสถานะ</h3>
@@ -409,7 +428,9 @@
     </section>
 
     <section class="table-section">
-      <h3>รายละเอียดรายบุคคล</h3>
+      <div class="table-header-row">
+        <h3>รายละเอียดรายบุคคล</h3>
+      </div>
       <table>
         <thead>
           <tr>
@@ -429,33 +450,7 @@
       </table>
     </section>
 
-    <section class="debug-section">
-      <h3>เครื่องมือตรวจระบบ 30 วินาที</h3>
-      <p>หน้า: <span id="diagPageUrl">-</span></p>
-      <p>API: <span id="diagApiUrl">-</span></p>
-      <p>สถานะล่าสุด: <span id="diagOverallStatus">ยังไม่ได้ตรวจ</span></p>
-
-      <table class="diag-table">
-        <thead>
-          <tr>
-            <th>รายการตรวจ</th>
-            <th>ผลลัพธ์</th>
-            <th>รายละเอียด</th>
-            <th>เวลา</th>
-          </tr>
-        </thead>
-        <tbody id="systemCheckBody">
-          <tr>
-            <td>รอการตรวจ</td>
-            <td>-</td>
-            <td>กดปุ่ม “ตรวจระบบ 30 วินาที”</td>
-            <td>-</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>
