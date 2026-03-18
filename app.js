@@ -6,18 +6,9 @@ const CONFIG = {
 };
 
 const monthNamesThai = {
-  1: 'มกราคม',
-  2: 'กุมภาพันธ์',
-  3: 'มีนาคม',
-  4: 'เมษายน',
-  5: 'พฤษภาคม',
-  6: 'มิถุนายน',
-  7: 'กรกฎาคม',
-  8: 'สิงหาคม',
-  9: 'กันยายน',
-  10: 'ตุลาคม',
-  11: 'พฤศจิกายน',
-  12: 'ธันวาคม'
+  1: 'มกราคม', 2: 'กุมภาพันธ์', 3: 'มีนาคม', 4: 'เมษายน',
+  5: 'พฤษภาคม', 6: 'มิถุนายน', 7: 'กรกฎาคม', 8: 'สิงหาคม',
+  9: 'กันยายน', 10: 'ตุลาคม', 11: 'พฤศจิกายน', 12: 'ธันวาคม'
 };
 
 let appState = {
@@ -29,47 +20,53 @@ let appState = {
   autoRefreshTimer: null,
   searchTimer: null,
   requestToken: 0,
-  // ✅ เพิ่ม: cache ข้อมูล dashboard แยกตามปี-เดือน เพื่อไม่ต้องเรียก API ซ้ำ
   dataCache: {},
-  // ✅ เพิ่ม: flag ว่าโหลด periods แล้วหรือยัง ไม่ต้องเรียกซ้ำทุกครั้ง
   periodsLoaded: false
 };
 
 const el = {
-  yearSelect: document.getElementById('yearSelect'),
-  monthSelect: document.getElementById('monthSelect'),
-  searchInput: document.getElementById('searchInput'),
-  refreshBtn: document.getElementById('refreshBtn'),
-  runSystemCheckBtn: document.getElementById('runSystemCheckBtn'),
-  lastUpdated: document.getElementById('lastUpdated'),
-  deadlineValue: document.getElementById('deadlineValue'),
-  normalCount: document.getElementById('normalCount'),
-  lateCount: document.getElementById('lateCount'),
-  missingCount: document.getElementById('missingCount'),
-  totalCount: document.getElementById('totalCount'),
-  summaryLabel: document.getElementById('summaryLabel'),
+  yearSelect:      document.getElementById('yearSelect'),
+  monthSelect:     document.getElementById('monthSelect'),
+  searchInput:     document.getElementById('searchInput'),
+  refreshBtn:      document.getElementById('refreshBtn'),
+  exportCsvBtn:    document.getElementById('exportCsvBtn'),
+  lastUpdated:     document.getElementById('lastUpdated'),
+  deadlineValue:   document.getElementById('deadlineValue'),
+  normalCount:     document.getElementById('normalCount'),
+  lateCount:       document.getElementById('lateCount'),
+  missingCount:    document.getElementById('missingCount'),
+  totalCount:      document.getElementById('totalCount'),
+  summaryLabel:    document.getElementById('summaryLabel'),
   personTableBody: document.getElementById('personTableBody'),
-  simpleChart: document.getElementById('simpleChart'),
-  statusText: document.getElementById('statusText'),
-  asOfDate: document.getElementById('asOfDate'),
-  ruleText: document.getElementById('ruleText'),
-  diagPageUrl: document.getElementById('diagPageUrl'),
-  diagApiUrl: document.getElementById('diagApiUrl'),
-  diagOverallStatus: document.getElementById('diagOverallStatus'),
-  systemCheckBody: document.getElementById('systemCheckBody')
+  simpleChart:     document.getElementById('simpleChart'),
+  statusText:      document.getElementById('statusText'),
+  asOfDate:        document.getElementById('asOfDate'),
+  ruleText:        document.getElementById('ruleText'),
+  // % bars
+  normalPctFill:   document.getElementById('normalPctFill'),
+  normalPctLabel:  document.getElementById('normalPctLabel'),
+  latePctFill:     document.getElementById('latePctFill'),
+  latePctLabel:    document.getElementById('latePctLabel'),
+  missingPctFill:  document.getElementById('missingPctFill'),
+  missingPctLabel: document.getElementById('missingPctLabel'),
+  // completion bar
+  completionPct:   document.getElementById('completionPct'),
+  compSegNormal:   document.getElementById('compSegNormal'),
+  compSegLate:     document.getElementById('compSegLate'),
+  compSegMissing:  document.getElementById('compSegMissing'),
+  legendNormal:    document.getElementById('legendNormal'),
+  legendLate:      document.getElementById('legendLate'),
+  legendMissing:   document.getElementById('legendMissing')
 };
 
-// ✅ Helper: สร้าง key สำหรับ cache
-function periodKey(year, month) {
-  return `${year}-${month}`;
-}
+// ─── Helpers ───────────────────────────────────────────────
+
+function periodKey(year, month) { return `${year}-${month}`; }
 
 function escapeHtml(value) {
   return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
 
@@ -78,29 +75,17 @@ function formatDateTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString('th-TH', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
     timeZone: 'Asia/Bangkok'
   });
 }
 
 function normalizeStatus(status) {
   const s = String(status || '').trim().toLowerCase();
-
   if (s === 'ปกติ' || s === 'normal') return 'ปกติ';
   if (s === 'ล่าช้า' || s === 'late' || s === 'delay' || s === 'delayed') return 'ล่าช้า';
-  if (
-    s === 'ยังไม่ส่ง' ||
-    s === 'ยังไม่ได้ส่ง' ||
-    s === 'missing' ||
-    s === 'not submitted' ||
-    s === 'pending'
-  ) return 'ยังไม่ส่ง';
-
+  if (['ยังไม่ส่ง','ยังไม่ได้ส่ง','missing','not submitted','pending'].includes(s)) return 'ยังไม่ส่ง';
   return 'ยังไม่ส่ง';
 }
 
@@ -111,181 +96,166 @@ function getBadgeClass(status) {
   return 'missing';
 }
 
-function setStatus(message) {
-  if (el.statusText) el.statusText.textContent = message;
+function getRowClass(status) {
+  const s = normalizeStatus(status);
+  if (s === 'ปกติ') return 'row-normal';
+  if (s === 'ล่าช้า') return 'row-late';
+  return 'row-missing';
 }
 
-function setLastUpdated(message) {
-  if (el.lastUpdated) el.lastUpdated.textContent = message;
+function pct(count, total) {
+  if (!total) return 0;
+  return Math.round((count / total) * 100);
 }
+
+function setStatus(message)      { if (el.statusText)   el.statusText.textContent = message; }
+function setLastUpdated(message) { if (el.lastUpdated)  el.lastUpdated.textContent = message; }
 
 function createOptions(select, values, formatter = v => v) {
   if (!select) return;
   select.innerHTML = '';
-
   values.forEach(value => {
-    const option = document.createElement('option');
-    option.value = String(value);
-    option.textContent = formatter(value);
-    select.appendChild(option);
+    const opt = document.createElement('option');
+    opt.value = String(value);
+    opt.textContent = formatter(value);
+    select.appendChild(opt);
   });
 }
 
-async function fetchJson(url) {
-  const res = await fetch(url, {
-    method: 'GET',
-    cache: 'no-store'
-  });
+// ─── Skeleton loading ────────────────────────────────────────
 
+function showSkeletonLoading() {
+  // stat cards: แสดง skeleton แทนตัวเลข
+  [el.normalCount, el.lateCount, el.missingCount, el.totalCount].forEach(el => {
+    if (el) el.innerHTML = '<span class="skeleton"></span>';
+  });
+  // reset % bars
+  [el.normalPctFill, el.latePctFill, el.missingPctFill].forEach(fill => {
+    if (fill) fill.style.width = '0%';
+  });
+  [el.normalPctLabel, el.latePctLabel, el.missingPctLabel].forEach(lbl => {
+    if (lbl) lbl.textContent = '-';
+  });
+  // completion bar
+  if (el.compSegNormal)  el.compSegNormal.style.width  = '0%';
+  if (el.compSegLate)    el.compSegLate.style.width    = '0%';
+  if (el.compSegMissing) el.compSegMissing.style.width = '0%';
+  if (el.completionPct)  el.completionPct.textContent  = '-';
+  // table
+  if (el.personTableBody) {
+    el.personTableBody.innerHTML = `
+      <tr><td colspan="6" style="padding:16px 10px;">
+        <span class="skeleton" style="width:40%;height:14px;margin-bottom:10px;"></span>
+        <span class="skeleton" style="width:70%;height:14px;margin-bottom:10px;"></span>
+        <span class="skeleton" style="width:55%;height:14px;"></span>
+      </td></tr>`;
+  }
+}
+
+// ─── API ─────────────────────────────────────────────────────
+
+async function fetchJson(url) {
+  const res  = await fetch(url, { method: 'GET', cache: 'no-store' });
   const text = await res.text();
   let json = null;
-
-  try {
-    json = JSON.parse(text);
-  } catch (err) {
-    throw new Error(`API ตอบกลับไม่ใช่ JSON: ${text.slice(0, 200)}`);
-  }
-
-  if (!res.ok) {
-    throw new Error(`โหลดข้อมูลไม่สำเร็จ: ${res.status}`);
-  }
-
-  if (!json.ok) {
-    throw new Error(json.message || 'API error');
-  }
-
+  try { json = JSON.parse(text); } catch { throw new Error(`API ตอบกลับไม่ใช่ JSON: ${text.slice(0, 200)}`); }
+  if (!res.ok)    throw new Error(`โหลดข้อมูลไม่สำเร็จ: ${res.status}`);
+  if (!json.ok)   throw new Error(json.message || 'API error');
   return json;
 }
 
 async function fetchAvailablePeriods() {
-  if (!CONFIG.apiBaseUrl || CONFIG.apiBaseUrl.includes('PASTE_YOUR')) {
-    throw new Error('ยังไม่ได้ตั้งค่า Apps Script Web App URL');
-  }
-
-  const url = `${CONFIG.apiBaseUrl}?action=years-months&_ts=${Date.now()}`;
+  const url  = `${CONFIG.apiBaseUrl}?action=years-months&_ts=${Date.now()}`;
   const json = await fetchJson(url);
   return Array.isArray(json.data) ? json.data : [];
 }
 
 async function fetchDashboardData(year, month) {
-  if (!CONFIG.apiBaseUrl || CONFIG.apiBaseUrl.includes('PASTE_YOUR')) {
-    throw new Error('ยังไม่ได้ตั้งค่า Apps Script Web App URL');
-  }
-
-  const url = `${CONFIG.apiBaseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}&_ts=${Date.now()}`;
+  const url  = `${CONFIG.apiBaseUrl}?action=dashboard-data&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)}&_ts=${Date.now()}`;
   const json = await fetchJson(url);
   return json.data;
 }
 
+// ─── Period helpers ──────────────────────────────────────────
+
 function getUniqueYears(periods) {
-  return [...new Set(periods.map(item => Number(item.year)))].sort((a, b) => b - a);
+  return [...new Set(periods.map(p => Number(p.year)))].sort((a, b) => b - a);
 }
 
 function getMonthsForYear(periods, year) {
   return periods
-    .filter(item => Number(item.year) === Number(year))
-    .map(item => Number(item.month))
+    .filter(p => Number(p.year) === Number(year))
+    .map(p => Number(p.month))
     .sort((a, b) => a - b);
 }
 
 function buildFallbackPeriods() {
   const now = new Date();
-  return [{
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    monthThai: monthNamesThai[now.getMonth() + 1] || ''
-  }];
+  return [{ year: now.getFullYear(), month: now.getMonth() + 1, monthThai: monthNamesThai[now.getMonth() + 1] || '' }];
 }
 
 function ensureSelectedPeriod() {
-  if (!appState.availablePeriods.length) {
-    appState.availablePeriods = buildFallbackPeriods();
-  }
-
+  if (!appState.availablePeriods.length) appState.availablePeriods = buildFallbackPeriods();
   const years = getUniqueYears(appState.availablePeriods);
-
-  if (!years.length) {
-    const now = new Date();
-    appState.selectedYear = now.getFullYear();
-    appState.selectedMonth = now.getMonth() + 1;
-    return;
-  }
-
-  if (!appState.selectedYear || !years.includes(Number(appState.selectedYear))) {
-    appState.selectedYear = years[0];
-  }
-
+  if (!years.length) { const n = new Date(); appState.selectedYear = n.getFullYear(); appState.selectedMonth = n.getMonth() + 1; return; }
+  if (!appState.selectedYear || !years.includes(Number(appState.selectedYear))) appState.selectedYear = years[0];
   const months = getMonthsForYear(appState.availablePeriods, appState.selectedYear);
-
-  if (!months.length) {
-    appState.selectedMonth = 1;
-    return;
-  }
-
-  if (!appState.selectedMonth || !months.includes(Number(appState.selectedMonth))) {
-    appState.selectedMonth = months[months.length - 1] || months[0];
-  }
+  if (!months.length) { appState.selectedMonth = 1; return; }
+  if (!appState.selectedMonth || !months.includes(Number(appState.selectedMonth))) appState.selectedMonth = months[months.length - 1] || months[0];
 }
 
 function renderPeriodSelectors() {
   ensureSelectedPeriod();
-
-  const years = getUniqueYears(appState.availablePeriods);
+  const years  = getUniqueYears(appState.availablePeriods);
   const months = getMonthsForYear(appState.availablePeriods, appState.selectedYear);
-
-  createOptions(el.yearSelect, years, y => String(Number(y) + 543));
+  createOptions(el.yearSelect,  years,  y => String(Number(y) + 543));
   createOptions(el.monthSelect, months, m => `${m} - ${monthNamesThai[m] || ''}`);
-
-  if (el.yearSelect) el.yearSelect.value = String(appState.selectedYear);
+  if (el.yearSelect)  el.yearSelect.value  = String(appState.selectedYear);
   if (el.monthSelect) el.monthSelect.value = String(appState.selectedMonth);
 }
 
+// ─── Render ──────────────────────────────────────────────────
+
 function renderChart(normalCount, lateCount, missingCount, total) {
   if (!el.simpleChart) return;
-
   const bars = [
-    { label: 'ปกติ', value: normalCount, cls: 'success' },
-    { label: 'ล่าช้า', value: lateCount, cls: 'danger' },
+    { label: 'ปกติ',     value: normalCount,  cls: 'success' },
+    { label: 'ล่าช้า',   value: lateCount,    cls: 'danger'  },
     { label: 'ยังไม่ส่ง', value: missingCount, cls: 'warning' }
   ];
-
   el.simpleChart.innerHTML = '';
-
   bars.forEach(item => {
-    const pct = total ? Math.round((item.value / total) * 100) : 0;
+    const p   = total ? Math.round((item.value / total) * 100) : 0;
     const row = document.createElement('div');
     row.className = 'bar-row';
     row.innerHTML = `
       <div>${item.label}</div>
-      <div class="bar-track">
-        <div class="bar-fill ${item.cls}" style="width:${pct}%"></div>
-      </div>
-      <div>${item.value}</div>
-    `;
+      <div class="bar-track"><div class="bar-fill ${item.cls}" style="width:${p}%"></div></div>
+      <div>${item.value}</div>`;
     el.simpleChart.appendChild(row);
   });
 }
 
 function renderTable(records) {
   if (!el.personTableBody) return;
-
   el.personTableBody.innerHTML = '';
-
+  if (!records.length) {
+    el.personTableBody.innerHTML = '<tr><td colspan="6" class="empty-note">ไม่พบข้อมูล</td></tr>';
+    return;
+  }
   records.forEach(item => {
     const tr = document.createElement('tr');
+    tr.className = getRowClass(item.status);   // ★ row highlight
     const fileCell = item.fileUrl
       ? `<a class="file-link" href="${item.fileUrl}" target="_blank" rel="noopener">เปิดไฟล์</a>`
       : '-';
-
     tr.innerHTML = `
       <td>${escapeHtml(item.name || '-')}</td>
       <td><span class="badge ${getBadgeClass(item.status)}">${escapeHtml(normalizeStatus(item.status))}</span></td>
       <td>${escapeHtml(item.submittedAtDisplay || formatDateTime(item.submittedAt || ''))}</td>
       <td>${escapeHtml(item.deadline || '-')}</td>
       <td>${fileCell}</td>
-      <td>${escapeHtml(item.note || '-')}</td>
-    `;
-
+      <td>${escapeHtml(item.note || '-')}</td>`;
     el.personTableBody.appendChild(tr);
   });
 }
@@ -306,55 +276,68 @@ function normalizeRows(rows) {
 function getCountsFromApiOrRows(payload, filteredRows, isSearching) {
   const apiCounts = payload?.counts || {};
   const rows = Array.isArray(filteredRows) ? filteredRows : [];
-
   if (!isSearching) {
-    const normal = Number.isFinite(Number(apiCounts.normal))
-      ? Number(apiCounts.normal)
-      : rows.filter(r => r.status === 'ปกติ').length;
-
-    const late = Number.isFinite(Number(apiCounts.late))
-      ? Number(apiCounts.late)
-      : rows.filter(r => r.status === 'ล่าช้า').length;
-
-    const missing = Number.isFinite(Number(apiCounts.missing))
-      ? Number(apiCounts.missing)
-      : rows.filter(r => r.status === 'ยังไม่ส่ง').length;
-
-    const total = Number.isFinite(Number(apiCounts.total))
-      ? Number(apiCounts.total)
-      : rows.length;
-
-    return { normal, late, missing, total };
+    return {
+      normal:  Number.isFinite(Number(apiCounts.normal))  ? Number(apiCounts.normal)  : rows.filter(r => r.status === 'ปกติ').length,
+      late:    Number.isFinite(Number(apiCounts.late))    ? Number(apiCounts.late)    : rows.filter(r => r.status === 'ล่าช้า').length,
+      missing: Number.isFinite(Number(apiCounts.missing)) ? Number(apiCounts.missing) : rows.filter(r => r.status === 'ยังไม่ส่ง').length,
+      total:   Number.isFinite(Number(apiCounts.total))   ? Number(apiCounts.total)   : rows.length
+    };
   }
-
   return {
-    normal: rows.filter(r => r.status === 'ปกติ').length,
-    late: rows.filter(r => r.status === 'ล่าช้า').length,
+    normal:  rows.filter(r => r.status === 'ปกติ').length,
+    late:    rows.filter(r => r.status === 'ล่าช้า').length,
     missing: rows.filter(r => r.status === 'ยังไม่ส่ง').length,
-    total: rows.length
+    total:   rows.length
   };
+}
+
+// ★ อัปเดต % bars ใน stat cards
+function renderStatPctBars(counts) {
+  const { normal, late, missing, total } = counts;
+  const pNormal  = pct(normal,  total);
+  const pLate    = pct(late,    total);
+  const pMissing = pct(missing, total);
+
+  if (el.normalPctFill)   el.normalPctFill.style.width   = `${pNormal}%`;
+  if (el.normalPctLabel)  el.normalPctLabel.textContent   = `${pNormal}% ของทั้งหมด`;
+  if (el.latePctFill)     el.latePctFill.style.width      = `${pLate}%`;
+  if (el.latePctLabel)    el.latePctLabel.textContent     = `${pLate}% ของทั้งหมด`;
+  if (el.missingPctFill)  el.missingPctFill.style.width   = `${pMissing}%`;
+  if (el.missingPctLabel) el.missingPctLabel.textContent  = `${pMissing}% ของทั้งหมด`;
+}
+
+// ★ อัปเดต completion bar
+function renderCompletionBar(counts) {
+  const { normal, late, missing, total } = counts;
+  const pNormal  = pct(normal,  total);
+  const pLate    = pct(late,    total);
+  const pMissing = pct(missing, total);
+
+  if (el.compSegNormal)  el.compSegNormal.style.width  = `${pNormal}%`;
+  if (el.compSegLate)    el.compSegLate.style.width    = `${pLate}%`;
+  if (el.compSegMissing) el.compSegMissing.style.width = `${pMissing}%`;
+  if (el.completionPct)  el.completionPct.textContent  = `${pNormal}%`;
+  if (el.legendNormal)   el.legendNormal.textContent   = `${pNormal}%`;
+  if (el.legendLate)     el.legendLate.textContent     = `${pLate}%`;
+  if (el.legendMissing)  el.legendMissing.textContent  = `${pMissing}%`;
 }
 
 function renderFilteredView() {
   if (!appState.dashboardData) return;
 
-  const search = (appState.search || '').toLowerCase();
-  const rows = normalizeRows(appState.dashboardData.rows);
-  const isSearching = Boolean(search);
-
-  const filteredRows = rows.filter(r => {
-    if (!search) return true;
-    return String(r.name || '').toLowerCase().includes(search);
-  });
-
-  const counts = getCountsFromApiOrRows(appState.dashboardData, filteredRows, isSearching);
+  const search       = (appState.search || '').toLowerCase();
+  const rows         = normalizeRows(appState.dashboardData.rows);
+  const isSearching  = Boolean(search);
+  const filteredRows = rows.filter(r => !search || String(r.name || '').toLowerCase().includes(search));
+  const counts       = getCountsFromApiOrRows(appState.dashboardData, filteredRows, isSearching);
 
   if (el.deadlineValue) el.deadlineValue.textContent = appState.dashboardData.deadline || '-';
-  if (el.normalCount) el.normalCount.textContent = counts.normal;
-  if (el.lateCount) el.lateCount.textContent = counts.late;
-  if (el.missingCount) el.missingCount.textContent = counts.missing;
-  if (el.totalCount) el.totalCount.textContent = counts.total;
-  if (el.asOfDate) el.asOfDate.textContent = new Date().toLocaleString('th-TH');
+  if (el.normalCount)   el.normalCount.textContent   = counts.normal;
+  if (el.lateCount)     el.lateCount.textContent     = counts.late;
+  if (el.missingCount)  el.missingCount.textContent  = counts.missing;
+  if (el.totalCount)    el.totalCount.textContent    = counts.total;
+  if (el.asOfDate)      el.asOfDate.textContent      = new Date().toLocaleString('th-TH');
   if (el.ruleText && appState.dashboardData.ruleText) el.ruleText.textContent = appState.dashboardData.ruleText;
 
   if (el.summaryLabel) {
@@ -363,46 +346,38 @@ function renderFilteredView() {
       `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth} ${Number(appState.selectedYear) + 543}`;
   }
 
-  renderTable(filteredRows);
+  renderStatPctBars(counts);     // ★ % bars
+  renderCompletionBar(counts);   // ★ completion bar
+  renderTable(filteredRows);     // ★ row highlight อยู่ใน renderTable
   renderChart(counts.normal, counts.late, counts.missing, counts.total);
 }
 
-// ✅ แก้ไข: ตรวจ cache ก่อน ถ้ามีข้อมูลอยู่แล้วไม่ต้องเรียก API ใหม่
+// ─── Cache + load ─────────────────────────────────────────────
+
 async function loadDashboardForSelectedPeriod() {
   const token = ++appState.requestToken;
-  const key = periodKey(appState.selectedYear, appState.selectedMonth);
-
-  // ถ้าข้อมูลของเดือนนี้อยู่ใน cache แล้ว → ใช้เลยทันที ไม่ต้องรอ API
+  const key   = periodKey(appState.selectedYear, appState.selectedMonth);
   if (appState.dataCache[key]) {
     if (token !== appState.requestToken) return false;
     appState.dashboardData = appState.dataCache[key];
     return true;
   }
-
-  // ยังไม่มีใน cache → เรียก API แล้วเก็บไว้
   const data = await fetchDashboardData(appState.selectedYear, appState.selectedMonth);
   if (token !== appState.requestToken) return false;
-
-  appState.dataCache[key] = data; // ✅ เก็บลง cache
-  appState.dashboardData = data;
+  appState.dataCache[key] = data;
+  appState.dashboardData  = data;
   return true;
 }
 
-// ✅ ฟังก์ชันใหม่: เปลี่ยนเดือน/ปี โดยไม่เรียก fetchAvailablePeriods ซ้ำ
 async function switchPeriod() {
   try {
-    const key = periodKey(appState.selectedYear, appState.selectedMonth);
+    const key      = periodKey(appState.selectedYear, appState.selectedMonth);
     const isCached = Boolean(appState.dataCache[key]);
 
-    if (isCached) {
-      // ✅ มีใน cache → แสดงผลทันทีเลย ไม่มีการรอ
-      setStatus('สถานะระบบ: พร้อมใช้งาน');
-    } else {
-      // ยังไม่มีใน cache → แสดง loading ระหว่างรอ API
+    if (!isCached) {
+      // ★ แสดง skeleton ระหว่างรอข้อมูลใหม่
       setStatus('สถานะระบบ: กำลังโหลดข้อมูล');
-      if (el.personTableBody) {
-        el.personTableBody.innerHTML = '<tr><td colspan="6" class="empty-note">กำลังโหลดข้อมูล...</td></tr>';
-      }
+      showSkeletonLoading();
     }
 
     const loaded = await loadDashboardForSelectedPeriod();
@@ -418,6 +393,40 @@ async function switchPeriod() {
   }
 }
 
+// ─── Export CSV ──────────────────────────────────────────────
+
+function exportCsv() {
+  if (!appState.dashboardData) return;
+
+  const rows     = normalizeRows(appState.dashboardData.rows);
+  const label    = appState.dashboardData.reportLabel ||
+                   `${monthNamesThai[appState.selectedMonth] || appState.selectedMonth}_${Number(appState.selectedYear) + 543}`;
+  const headers  = ['ชื่อ', 'สถานะ', 'วันที่ส่งจริง', 'วันกำหนดส่ง', 'ไฟล์รายงาน', 'หมายเหตุ'];
+
+  const csvRows  = [
+    headers.join(','),
+    ...rows.map(r => [
+      `"${(r.name || '').replace(/"/g, '""')}"`,
+      `"${normalizeStatus(r.status)}"`,
+      `"${r.submittedAtDisplay || formatDateTime(r.submittedAt) || ''}"`,
+      `"${r.deadline || ''}"`,
+      `"${r.fileUrl || ''}"`,
+      `"${(r.note || '').replace(/"/g, '""')}"`
+    ].join(','))
+  ];
+
+  const bom  = '\uFEFF';
+  const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `รายงาน_${label}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Events ──────────────────────────────────────────────────
+
 function debounce(fn, wait) {
   return function(...args) {
     clearTimeout(appState.searchTimer);
@@ -429,9 +438,7 @@ function bindEvents() {
   if (el.yearSelect) {
     el.yearSelect.addEventListener('change', async () => {
       appState.selectedYear = Number(el.yearSelect.value);
-      // อัปเดต dropdown เดือนให้ตรงกับปีที่เลือก
       renderPeriodSelectors();
-      // ✅ เรียก switchPeriod แทน initApp → ไม่ fetch periods ซ้ำ
       await switchPeriod();
     });
   }
@@ -439,7 +446,6 @@ function bindEvents() {
   if (el.monthSelect) {
     el.monthSelect.addEventListener('change', async () => {
       appState.selectedMonth = Number(el.monthSelect.value);
-      // ✅ เรียก switchPeriod แทน initApp → เร็วกว่าเดิมมาก
       await switchPeriod();
     });
   }
@@ -449,163 +455,54 @@ function bindEvents() {
       appState.search = el.searchInput.value.trim();
       renderFilteredView();
     }, CONFIG.searchDebounceMs);
-
     el.searchInput.addEventListener('input', debouncedSearch);
   }
 
   if (el.refreshBtn) {
     el.refreshBtn.addEventListener('click', async () => {
-      // ✅ Refresh: ล้าง cache ทั้งหมดแล้วโหลดใหม่จาก API
-      appState.dataCache = {};
+      appState.dataCache    = {};
       appState.periodsLoaded = false;
       await initApp(true, true);
     });
   }
 
-  if (el.runSystemCheckBtn) {
-    el.runSystemCheckBtn.addEventListener('click', runSystemCheck);
+  if (el.exportCsvBtn) {
+    el.exportCsvBtn.addEventListener('click', exportCsv);
   }
 }
 
 function startAutoRefresh() {
   if (appState.autoRefreshTimer) clearInterval(appState.autoRefreshTimer);
-
   if (CONFIG.autoRefreshMs > 0) {
     appState.autoRefreshTimer = setInterval(async () => {
       try {
-        // ✅ Auto-refresh: ล้าง cache เดือนปัจจุบันเท่านั้น ไม่ล้างทั้งหมด
         const key = periodKey(appState.selectedYear, appState.selectedMonth);
         delete appState.dataCache[key];
         await switchPeriod();
-      } catch (err) {
-        console.error('Auto refresh error:', err);
-      }
+      } catch (err) { console.error('Auto refresh error:', err); }
     }, CONFIG.autoRefreshMs);
   }
 }
 
-function diagStatusClass(status) {
-  if (status === 'PASS') return 'diag-ok';
-  if (status === 'WARN') return 'diag-warn';
-  if (status === 'FAIL') return 'diag-err';
-  return '';
-}
+// ─── Init ─────────────────────────────────────────────────────
 
-function renderSystemCheckRows(rows) {
-  if (!el.systemCheckBody) return;
-  el.systemCheckBody.innerHTML = rows.map(row => `
-    <tr>
-      <td>${escapeHtml(row.name)}</td>
-      <td class="${diagStatusClass(row.status)}">${escapeHtml(row.status)}</td>
-      <td>${escapeHtml(row.detail)}</td>
-      <td>${escapeHtml(row.ms)}</td>
-    </tr>
-  `).join('');
-}
-
-async function timedFetchJson(url, timeoutMs = 15000) {
-  const started = performance.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller.signal
-    });
-
-    const text = await res.text();
-    let json = null;
-
-    try {
-      json = JSON.parse(text);
-    } catch (e) {
-      json = null;
-    }
-
-    return {
-      ok: res.ok,
-      status: res.status,
-      elapsedMs: Math.round(performance.now() - started),
-      text,
-      json
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function runSystemCheck() {
-  if (el.diagPageUrl) el.diagPageUrl.textContent = window.location.href;
-  if (el.diagApiUrl) el.diagApiUrl.textContent = CONFIG.apiBaseUrl || '-';
-  if (el.diagOverallStatus) el.diagOverallStatus.textContent = 'กำลังตรวจ...';
-
-  const rows = [];
-  const pushRow = (name, status, detail, ms = '-') => {
-    rows.push({ name, status, detail, ms: typeof ms === 'number' ? `${ms} ms` : ms });
-    renderSystemCheckRows(rows);
-  };
-
-  try {
-    pushRow('หน้าเว็บ', 'PASS', 'JavaScript ทำงานปกติ');
-
-    const ping = await timedFetchJson(`${CONFIG.apiBaseUrl}?action=ping&_ts=${Date.now()}`);
-    if (!ping.ok || !ping.json || !ping.json.ok) {
-      pushRow('API Ping', 'FAIL', ping.text || `HTTP ${ping.status}`, ping.elapsedMs);
-    } else {
-      pushRow('API Ping', 'PASS', ping.json.message || 'API ใช้งานได้', ping.elapsedMs);
-    }
-
-    const ym = await timedFetchJson(`${CONFIG.apiBaseUrl}?action=years-months&_ts=${Date.now()}`);
-    if (!ym.ok || !ym.json || !ym.json.ok) {
-      pushRow('years-months', 'FAIL', ym.text || `HTTP ${ym.status}`, ym.elapsedMs);
-    } else {
-      pushRow('years-months', 'PASS', `พบ ${Array.isArray(ym.json.data) ? ym.json.data.length : 0} งวด`, ym.elapsedMs);
-    }
-
-    const dash = await timedFetchJson(`${CONFIG.apiBaseUrl}?action=dashboard-data&year=${appState.selectedYear}&month=${appState.selectedMonth}&_ts=${Date.now()}`);
-    if (!dash.ok || !dash.json || !dash.json.ok) {
-      pushRow('dashboard-data', 'FAIL', dash.text || `HTTP ${dash.status}`, dash.elapsedMs);
-      if (el.diagOverallStatus) el.diagOverallStatus.textContent = 'พบปัญหา';
-    } else {
-      const count = dash.json.data && Array.isArray(dash.json.data.rows) ? dash.json.data.rows.length : 0;
-      pushRow('dashboard-data', 'PASS', `โหลด rows ได้ ${count} รายการ`, dash.elapsedMs);
-      if (el.diagOverallStatus) el.diagOverallStatus.textContent = 'ผ่านทั้งหมด';
-    }
-
-    // ✅ เพิ่ม: แสดงสถานะ cache
-    const cachedCount = Object.keys(appState.dataCache).length;
-    pushRow('Cache', 'PASS', `มีข้อมูลใน cache ${cachedCount} เดือน (${Object.keys(appState.dataCache).join(', ') || '-'})`);
-
-  } catch (error) {
-    pushRow('System Check', 'FAIL', error.message || String(error));
-    if (el.diagOverallStatus) el.diagOverallStatus.textContent = 'พบปัญหา';
-  }
-}
-
-// ✅ initApp: ใช้สำหรับโหลดครั้งแรก หรือกด Refresh เท่านั้น
 async function initApp(isRefresh = false, keepCurrentSelection = false) {
   try {
     setStatus('สถานะระบบ: กำลังโหลดข้อมูล');
-
     if (isRefresh) setLastUpdated('กำลังรีเฟรช...');
 
-    // ถ้า periodsLoaded แล้วและไม่ใช่ refresh → ใช้ข้อมูลเดิม ไม่ต้องเรียก API ซ้ำ
     if (!appState.periodsLoaded || isRefresh) {
       const periods = await fetchAvailablePeriods();
       appState.availablePeriods = periods.length ? periods : buildFallbackPeriods();
-      appState.periodsLoaded = true;
+      appState.periodsLoaded    = true;
     }
 
-    if (!keepCurrentSelection) {
-      appState.selectedYear = null;
-      appState.selectedMonth = null;
-    }
+    if (!keepCurrentSelection) { appState.selectedYear = null; appState.selectedMonth = null; }
 
     ensureSelectedPeriod();
     renderPeriodSelectors();
 
+    showSkeletonLoading();
     const loaded = await loadDashboardForSelectedPeriod();
     if (loaded === false) return;
 
@@ -621,4 +518,4 @@ async function initApp(isRefresh = false, keepCurrentSelection = false) {
 
 bindEvents();
 startAutoRefresh();
-initApp().then(() => runSystemCheck()).catch(console.error);
+initApp().catch(console.error);
