@@ -1,5 +1,5 @@
 const CONFIG = {
-  apiBaseUrl: 'PASTE_YOUR_WEBAPP_URL_HERE',
+  apiBaseUrl: 'https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec',
   fallbackDemo: false,
   autoRefreshMs: 0,
   searchDebounceMs: 250
