@@ -28,7 +28,11 @@ let appState = {
   search: '',
   autoRefreshTimer: null,
   searchTimer: null,
-  requestToken: 0
+  requestToken: 0,
+  // ✅ เพิ่ม: cache ข้อมูล dashboard แยกตามปี-เดือน เพื่อไม่ต้องเรียก API ซ้ำ
+  dataCache: {},
+  // ✅ เพิ่ม: flag ว่าโหลด periods แล้วหรือยัง ไม่ต้องเรียกซ้ำทุกครั้ง
+  periodsLoaded: false
 };
 
 const el = {
@@ -54,6 +58,11 @@ const el = {
   diagOverallStatus: document.getElementById('diagOverallStatus'),
   systemCheckBody: document.getElementById('systemCheckBody')
 };
+
+// ✅ Helper: สร้าง key สำหรับ cache
+function periodKey(year, month) {
+  return `${year}-${month}`;
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -358,13 +367,55 @@ function renderFilteredView() {
   renderChart(counts.normal, counts.late, counts.missing, counts.total);
 }
 
+// ✅ แก้ไข: ตรวจ cache ก่อน ถ้ามีข้อมูลอยู่แล้วไม่ต้องเรียก API ใหม่
 async function loadDashboardForSelectedPeriod() {
   const token = ++appState.requestToken;
-  const data = await fetchDashboardData(appState.selectedYear, appState.selectedMonth);
+  const key = periodKey(appState.selectedYear, appState.selectedMonth);
 
+  // ถ้าข้อมูลของเดือนนี้อยู่ใน cache แล้ว → ใช้เลยทันที ไม่ต้องรอ API
+  if (appState.dataCache[key]) {
+    if (token !== appState.requestToken) return false;
+    appState.dashboardData = appState.dataCache[key];
+    return true;
+  }
+
+  // ยังไม่มีใน cache → เรียก API แล้วเก็บไว้
+  const data = await fetchDashboardData(appState.selectedYear, appState.selectedMonth);
   if (token !== appState.requestToken) return false;
+
+  appState.dataCache[key] = data; // ✅ เก็บลง cache
   appState.dashboardData = data;
   return true;
+}
+
+// ✅ ฟังก์ชันใหม่: เปลี่ยนเดือน/ปี โดยไม่เรียก fetchAvailablePeriods ซ้ำ
+async function switchPeriod() {
+  try {
+    const key = periodKey(appState.selectedYear, appState.selectedMonth);
+    const isCached = Boolean(appState.dataCache[key]);
+
+    if (isCached) {
+      // ✅ มีใน cache → แสดงผลทันทีเลย ไม่มีการรอ
+      setStatus('สถานะระบบ: พร้อมใช้งาน');
+    } else {
+      // ยังไม่มีใน cache → แสดง loading ระหว่างรอ API
+      setStatus('สถานะระบบ: กำลังโหลดข้อมูล');
+      if (el.personTableBody) {
+        el.personTableBody.innerHTML = '<tr><td colspan="6" class="empty-note">กำลังโหลดข้อมูล...</td></tr>';
+      }
+    }
+
+    const loaded = await loadDashboardForSelectedPeriod();
+    if (loaded === false) return;
+
+    setLastUpdated(`อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}`);
+    setStatus('สถานะระบบ: พร้อมใช้งาน');
+    renderFilteredView();
+  } catch (error) {
+    console.error(error);
+    setStatus('สถานะระบบ: โหลดข้อมูลไม่สำเร็จ');
+    setLastUpdated(error.message || 'Unknown error');
+  }
 }
 
 function debounce(fn, wait) {
@@ -378,15 +429,18 @@ function bindEvents() {
   if (el.yearSelect) {
     el.yearSelect.addEventListener('change', async () => {
       appState.selectedYear = Number(el.yearSelect.value);
+      // อัปเดต dropdown เดือนให้ตรงกับปีที่เลือก
       renderPeriodSelectors();
-      await initApp(false, true);
+      // ✅ เรียก switchPeriod แทน initApp → ไม่ fetch periods ซ้ำ
+      await switchPeriod();
     });
   }
 
   if (el.monthSelect) {
     el.monthSelect.addEventListener('change', async () => {
       appState.selectedMonth = Number(el.monthSelect.value);
-      await initApp(false, true);
+      // ✅ เรียก switchPeriod แทน initApp → เร็วกว่าเดิมมาก
+      await switchPeriod();
     });
   }
 
@@ -401,6 +455,9 @@ function bindEvents() {
 
   if (el.refreshBtn) {
     el.refreshBtn.addEventListener('click', async () => {
+      // ✅ Refresh: ล้าง cache ทั้งหมดแล้วโหลดใหม่จาก API
+      appState.dataCache = {};
+      appState.periodsLoaded = false;
       await initApp(true, true);
     });
   }
@@ -416,7 +473,10 @@ function startAutoRefresh() {
   if (CONFIG.autoRefreshMs > 0) {
     appState.autoRefreshTimer = setInterval(async () => {
       try {
-        await initApp(true, true);
+        // ✅ Auto-refresh: ล้าง cache เดือนปัจจุบันเท่านั้น ไม่ล้างทั้งหมด
+        const key = periodKey(appState.selectedYear, appState.selectedMonth);
+        delete appState.dataCache[key];
+        await switchPeriod();
       } catch (err) {
         console.error('Auto refresh error:', err);
       }
@@ -513,20 +573,30 @@ async function runSystemCheck() {
       pushRow('dashboard-data', 'PASS', `โหลด rows ได้ ${count} รายการ`, dash.elapsedMs);
       if (el.diagOverallStatus) el.diagOverallStatus.textContent = 'ผ่านทั้งหมด';
     }
+
+    // ✅ เพิ่ม: แสดงสถานะ cache
+    const cachedCount = Object.keys(appState.dataCache).length;
+    pushRow('Cache', 'PASS', `มีข้อมูลใน cache ${cachedCount} เดือน (${Object.keys(appState.dataCache).join(', ') || '-'})`);
+
   } catch (error) {
     pushRow('System Check', 'FAIL', error.message || String(error));
     if (el.diagOverallStatus) el.diagOverallStatus.textContent = 'พบปัญหา';
   }
 }
 
+// ✅ initApp: ใช้สำหรับโหลดครั้งแรก หรือกด Refresh เท่านั้น
 async function initApp(isRefresh = false, keepCurrentSelection = false) {
   try {
     setStatus('สถานะระบบ: กำลังโหลดข้อมูล');
 
     if (isRefresh) setLastUpdated('กำลังรีเฟรช...');
 
-    const periods = await fetchAvailablePeriods();
-    appState.availablePeriods = periods.length ? periods : buildFallbackPeriods();
+    // ถ้า periodsLoaded แล้วและไม่ใช่ refresh → ใช้ข้อมูลเดิม ไม่ต้องเรียก API ซ้ำ
+    if (!appState.periodsLoaded || isRefresh) {
+      const periods = await fetchAvailablePeriods();
+      appState.availablePeriods = periods.length ? periods : buildFallbackPeriods();
+      appState.periodsLoaded = true;
+    }
 
     if (!keepCurrentSelection) {
       appState.selectedYear = null;
