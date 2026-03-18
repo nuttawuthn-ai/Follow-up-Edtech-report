@@ -176,6 +176,35 @@ async function fetchDashboardData(year, month) {
   return json.data;
 }
 
+// ─── Prefetch ─────────────────────────────────────────────────
+
+// โหลดทุกเดือนเงียบ ๆ ในพื้นหลัง หลังจากเดือนหลักโหลดเสร็จแล้ว
+async function prefetchAllPeriods() {
+  const periods = appState.availablePeriods;
+  if (!periods.length) return;
+
+  // รวบรวมทุก year-month ที่ยังไม่มีใน cache
+  const pending = periods.filter(p => {
+    const key = periodKey(Number(p.year), Number(p.month));
+    return !appState.dataCache[key];
+  });
+
+  if (!pending.length) return;
+
+  // ดึงทีละรายการแบบ sequential เพื่อไม่กดดัน Apps Script
+  for (const p of pending) {
+    const key = periodKey(Number(p.year), Number(p.month));
+    // ตรวจอีกครั้ง เผื่อถูก cache ระหว่างรอ
+    if (appState.dataCache[key]) continue;
+    try {
+      const data = await fetchDashboardData(Number(p.year), Number(p.month));
+      appState.dataCache[key] = data;
+    } catch {
+      // prefetch ล้มเหลวไม่เป็นไร ไม่ต้อง throw
+    }
+  }
+}
+
 // ─── Period helpers ──────────────────────────────────────────
 
 function getUniqueYears(periods) {
@@ -475,9 +504,10 @@ function bindEvents() {
 
   if (el.refreshBtn) {
     el.refreshBtn.addEventListener('click', async () => {
-      appState.dataCache    = {};
+      appState.dataCache     = {};
       appState.periodsLoaded = false;
       await initApp(true, true);
+      // prefetch จะถูกเรียกใน initApp อยู่แล้ว
     });
   }
 
@@ -524,6 +554,9 @@ async function initApp(isRefresh = false, keepCurrentSelection = false) {
     setLastUpdated(`อัปเดตล่าสุด: ${new Date().toLocaleString('th-TH')}`);
     setStatus('สถานะระบบ: พร้อมใช้งาน');
     renderFilteredView();
+
+    // ★ Prefetch เดือนอื่น ๆ เงียบ ๆ ในพื้นหลัง ไม่ block UI
+    prefetchAllPeriods().catch(() => {});
   } catch (error) {
     console.error(error);
     setStatus('สถานะระบบ: โหลดข้อมูลไม่สำเร็จ');
