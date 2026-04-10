@@ -1,4 +1,4 @@
-แพ็กเกจนี้เป็นเวอร์ชัน compat
+แพ็กเกจนี้เป็นเวอร์ชัน compact
 
 ใช้เมื่อหน้าเว็บขึ้น Unknown action จาก Apps Script
 
