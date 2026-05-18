@@ -1,5 +1,5 @@
 const CONFIG = {
-  apiBaseUrl: 'https://script.google.com/macros/s/AKfycbz_WGKpm3WHqeHq61tNnDjyhpjYyxwAMf7tui3x6zfDv47i6BADWNDqRjMUVZAKVbJnmQ/exec',
+  apiBaseUrl: 'https://script.google.com/macros/s/AKfycbwlpqV3ddOSbgQX2gY4z4LTCp8H8Iq2aNa_OTtBBbJEw-URPkAg0vSX_WLTRCd8MyypWg/exec',
   fallbackDemo: false,
   autoRefreshMs: 0,
   searchDebounceMs: 250
@@ -208,7 +208,12 @@ async function prefetchAllPeriods() {
 // ─── Period helpers ──────────────────────────────────────────
 
 function getUniqueYears(periods) {
-  return [...new Set(periods.map(p => Number(p.year)))].sort((a, b) => b - a);
+  const currentCE = new Date().getFullYear();
+  return [...new Set(
+    periods
+      .map(p => Number(p.year))
+      .filter(y => y >= 2020 && y <= currentCE) // ✅ กรองปีที่ผิดปกติออก (เช่น 2029 ที่แปลงมาจาก 2572)
+  )].sort((a, b) => b - a);
 }
 
 function getMonthsForYear(periods, year) {
@@ -267,14 +272,15 @@ function renderChart(normalCount, lateCount, missingCount, total) {
 
 function renderTable(records) {
   if (!el.personTableBody) return;
-  el.personTableBody.innerHTML = '';
   if (!records.length) {
     el.personTableBody.innerHTML = '<tr><td colspan="6" class="empty-note">ไม่พบข้อมูล</td></tr>';
     return;
   }
+  // ✅ ใช้ DocumentFragment แทน appendChild ทีละ row → ลด reflow
+  const frag = document.createDocumentFragment();
   records.forEach(item => {
     const tr = document.createElement('tr');
-    tr.className = getRowClass(item.status);   // ★ row highlight
+    tr.className = getRowClass(item.status);
     const fileCell = item.fileUrl
       ? `<a class="file-link" href="${item.fileUrl}" target="_blank" rel="noopener">เปิดไฟล์</a>`
       : '-';
@@ -285,8 +291,10 @@ function renderTable(records) {
       <td>${escapeHtml(item.deadline || '-')}</td>
       <td>${fileCell}</td>
       <td>${escapeHtml(item.note || '-')}</td>`;
-    el.personTableBody.appendChild(tr);
+    frag.appendChild(tr);
   });
+  el.personTableBody.innerHTML = '';
+  el.personTableBody.appendChild(frag);
 }
 
 function normalizeRows(rows) {
@@ -321,14 +329,14 @@ function getCountsFromApiOrRows(payload, filteredRows, isSearching) {
   };
 }
 
-// ★ อัปเดต % bars ใน stat cards
+// ✅ รวม renderStatPctBars + renderCompletionBar เป็น batch DOM write เดียว
 function renderStatPctBars(counts) {
   const { normal, late, missing, total } = counts;
   const pNormal  = pct(normal,  total);
   const pLate    = pct(late,    total);
   const pMissing = pct(missing, total);
-
-  if (el.normalPctFill)   el.normalPctFill.style.width   = `${pNormal}%`;
+  // ✅ อัปเดต DOM ทั้งหมดในรอบเดียว ลด reflow
+  if (el.normalPctFill)   el.normalPctFill.style.width    = `${pNormal}%`;
   if (el.normalPctLabel)  el.normalPctLabel.textContent   = `${pNormal}% ของทั้งหมด`;
   if (el.latePctFill)     el.latePctFill.style.width      = `${pLate}%`;
   if (el.latePctLabel)    el.latePctLabel.textContent     = `${pLate}% ของทั้งหมด`;
@@ -336,22 +344,21 @@ function renderStatPctBars(counts) {
   if (el.missingPctLabel) el.missingPctLabel.textContent  = `${pMissing}% ของทั้งหมด`;
 }
 
-// ★ อัปเดต completion bar
 function renderCompletionBar(counts) {
-  const { normal, late, missing, total } = counts;
-
-  // คำนวณ % โดยให้ segment สุดท้ายดูดส่วนที่เหลือ ป้องกัน rounding เกิน 100%
-  const pNormal  = pct(normal,  total);
-  const pLate    = pct(late,    total);
-  const pMissing = total ? 100 - pNormal - pLate : 0;
-
-  if (el.compSegNormal)  el.compSegNormal.style.width  = `${pNormal}%`;
-  if (el.compSegLate)    el.compSegLate.style.width    = `${pLate}%`;
-  if (el.compSegMissing) el.compSegMissing.style.width = `${Math.max(0, pMissing)}%`;
-  if (el.completionPct)  el.completionPct.textContent  = `${pNormal}%`;
-  if (el.legendNormal)   el.legendNormal.textContent   = `${pNormal}%`;
-  if (el.legendLate)     el.legendLate.textContent     = `${pLate}%`;
-  if (el.legendMissing)  el.legendMissing.textContent  = `${Math.max(0, pMissing)}%`;
+  const { normal, late, total } = counts;
+  const pNormal  = pct(normal, total);
+  const pLate    = pct(late,   total);
+  const pMissing = total ? Math.max(0, 100 - pNormal - pLate) : 0;
+  // ✅ อ่าน DOM ก่อน write (avoid forced reflow)
+  requestAnimationFrame(() => {
+    if (el.compSegNormal)  el.compSegNormal.style.width  = `${pNormal}%`;
+    if (el.compSegLate)    el.compSegLate.style.width    = `${pLate}%`;
+    if (el.compSegMissing) el.compSegMissing.style.width = `${pMissing}%`;
+    if (el.completionPct)  el.completionPct.textContent  = `${pNormal}%`;
+    if (el.legendNormal)   el.legendNormal.textContent   = `${pNormal}%`;
+    if (el.legendLate)     el.legendLate.textContent     = `${pLate}%`;
+    if (el.legendMissing)  el.legendMissing.textContent  = `${pMissing}%`;
+  });
 }
 
 function renderFilteredView() {
